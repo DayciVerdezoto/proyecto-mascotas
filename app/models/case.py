@@ -1,0 +1,55 @@
+from sqlalchemy import Boolean, Column, DateTime, Float, Integer, String, Text
+from sqlalchemy.sql import func
+
+from app.db.session import Base
+
+
+class ClinicalCase(Base):
+    __tablename__ = "clinical_cases"
+
+    id = Column(Integer, primary_key=True, index=True)
+    edad = Column(Float, nullable=True)
+    raza = Column(String(120), nullable=True)
+    sexo = Column(String(20), nullable=True)
+    estado_reproductivo = Column(String(40), nullable=True)
+    peso = Column(Float, nullable=True)
+    tamano_corporal = Column(String(40), nullable=True)
+    motivo_consulta = Column(Text, nullable=True)
+    antecedentes_medicos_previos = Column(Text, nullable=True)
+    masa_tumoral_previa = Column(Boolean, nullable=True)
+    tiempo_evolucion_lesion = Column(Float, nullable=True)
+    tratamientos_previos = Column(Text, nullable=True)
+    numero_lesiones = Column(Integer, nullable=True)
+    ubicacion_anatomica_tumor = Column(String(120), nullable=True)
+    tamano_lesion = Column(Float, nullable=True)
+    forma_tumor = Column(String(80), nullable=True)
+    consistencia = Column(String(80), nullable=True)
+    movilidad = Column(String(80), nullable=True)
+    bordes = Column(String(80), nullable=True)
+    velocidad_crecimiento = Column(String(80), nullable=True)
+    ulceracion = Column(Boolean, nullable=True)
+    invasion_tejidos_cercanos = Column(Boolean, nullable=True)
+    tipo_estudio_diagnostico = Column(String(80), nullable=True)
+    citologia_realizada = Column(Boolean, nullable=True)
+    biopsia_realizada = Column(Boolean, nullable=True)
+    histopatologia_realizada = Column(Boolean, nullable=True)
+    diagnostico_citologico = Column(String(120), nullable=True)
+    diagnostico_histopatologico = Column(String(120), nullable=True)
+    tipo_tumor = Column(String(120), nullable=True)
+    grado_tumoral = Column(String(80), nullable=True)
+    indice_mitotico = Column(Float, nullable=True)
+    pleomorfismo_celular = Column(String(80), nullable=True)
+    necrosis_tumoral = Column(Boolean, nullable=True)
+    metastasis = Column(Boolean, nullable=True)
+    compromiso_ganglionar = Column(Boolean, nullable=True)
+    recurrencia_tumoral = Column(Boolean, nullable=True)
+    progresion_enfermedad = Column(String(80), nullable=True)
+    pronostico_clinico = Column(String(80), nullable=True)
+    tipo_tratamiento = Column(String(120), nullable=True)
+    respuesta_tratamiento = Column(String(80), nullable=True)
+    seguimiento_clinico = Column(String(120), nullable=True)
+    cancer_confirmado = Column(Boolean, nullable=True)
+
+    riesgo_probabilidad = Column(Float, nullable=True)
+    riesgo_etiqueta = Column(Integer, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
