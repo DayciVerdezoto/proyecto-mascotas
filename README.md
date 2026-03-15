@@ -67,3 +67,6 @@ pytest -q
 
 ## Decisiones metodológicas
 Implementadas en `docs/modeling.md`.
+
+## ARGUS Sprint 1 (Recolección de información clínica)
+Se incorporó un módulo nuevo en `argus-v2/backend` para ingesta de documentos clínicos, OCR, normalización de texto y extracción estructurada vía `POST /clinical/intake`. Ver `argus-v2/backend/README.md`.
