@@ -90,6 +90,19 @@
   .x{background:none; border:none; color:var(--rojo); cursor:pointer; font-size:15px; line-height:1; padding:2px 4px;}
   .add-gasto{display:flex; gap:6px; margin-top:8px; flex-wrap:wrap;}
   .add-gasto input.desc{flex:2; min-width:120px;} .add-gasto input.monto{flex:1; min-width:90px;}
+  .add-gasto input.fecha{flex:0 0 auto; width:140px;}
+  .g-fecha{display:inline-block; font-size:11.5px; font-weight:700; color:var(--gris); background:var(--gris-claro); border-radius:6px; padding:1px 6px; margin-right:2px; font-variant-numeric:tabular-nums;}
+  .grafica-wrap{display:flex; gap:22px; align-items:center; flex-wrap:wrap; justify-content:center;}
+  .donut{flex:0 0 auto;}
+  .leyenda{flex:1; min-width:200px; display:flex; flex-direction:column; gap:6px;}
+  .leyenda-item{display:flex; align-items:center; gap:8px; font-size:13.5px;}
+  .leyenda-color{width:12px; height:12px; border-radius:3px; flex:0 0 auto;}
+  .leyenda-nombre{flex:1;}
+  .leyenda-monto{font-variant-numeric:tabular-nums; font-weight:600;}
+  .leyenda-pct{color:var(--gris); font-size:12px; min-width:42px; text-align:right;}
+  .donut-centro{font-size:13px; fill:var(--gris);} .donut-total{font-size:17px; font-weight:700; fill:var(--texto);}
+  .config-linea{display:flex; align-items:center; gap:8px; flex-wrap:wrap; justify-content:center; margin:4px 0 18px; color:var(--gris); font-size:13.5px;}
+  .config-linea select{width:auto; padding:5px 8px;}
   .alerta-banner{background:var(--amarillo-bg); border:1px solid var(--amarillo-borde); color:#7a5b00; padding:10px 14px; border-radius:10px; margin-bottom:14px; display:flex; align-items:center; gap:8px; font-size:14px;}
   .alerta-banner.rojo{background:var(--rojo-bg); border-color:var(--rojo-borde); color:#8a2018;}
   .alerta-banner ul{margin:4px 0 0; padding-left:20px;}
@@ -171,6 +184,22 @@
     </div>
   </div>
 
+  <!-- GRAFICA -->
+  <div class="seccion">
+    <div class="seccion-cab">
+      <h2>📈 Distribución de gastos</h2>
+    </div>
+    <div class="seccion-cuerpo">
+      <div id="contGrafica"></div>
+    </div>
+  </div>
+
+  <div class="config-linea">
+    <label for="selMoneda">Moneda:</label>
+    <select id="selMoneda"></select>
+    <span>· Alerta automática al 80% del presupuesto</span>
+  </div>
+
   <div class="pie-tools">
     <button class="btn btn-sec" id="btnExportar">⬇️ Exportar respaldo</button>
     <button class="btn btn-sec" id="btnImportar">⬆️ Importar respaldo</button>
@@ -209,7 +238,8 @@
 
 <script>
 "use strict";
-const MONEDA = "Q"; // Símbolo de moneda. Cámbialo por "$" si lo prefieres.
+const MONEDA_DEFAULT = "Q"; // Moneda por defecto (editable desde la app).
+const MONEDAS = ["Q","$","€","MXN","S/","₡","Bs","COP","CLP"];
 const UMBRAL_ALERTA = 0.8; // 80%
 const STORAGE_KEY = "miPresupuesto_v1";
 
@@ -232,8 +262,15 @@ function categoriasIniciales(){
 // ---------- Utilidades ----------
 function uid(){ return Math.random().toString(36).slice(2,10)+Date.now().toString(36).slice(-4); }
 function hoy(){ const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`; }
+function hoyISO(){ const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; }
+function moneda(){ return (estado && estado.config && estado.config.moneda) || MONEDA_DEFAULT; }
 function fmt(n){
-  return MONEDA + " " + (Number(n)||0).toLocaleString("es-GT",{minimumFractionDigits:2, maximumFractionDigits:2});
+  return moneda() + " " + (Number(n)||0).toLocaleString("es-GT",{minimumFractionDigits:2, maximumFractionDigits:2});
+}
+function fmtFecha(iso){
+  if(!iso) return "";
+  const [a,m,d]=iso.split("-");
+  return `${d}/${m}`;
 }
 function etiquetaMes(clave){
   const [a,m]=clave.split("-"); return `${MESES[parseInt(m,10)-1]} ${a}`;
@@ -245,6 +282,7 @@ function gastadoCat(c){
 
 // ---------- Estado ----------
 let estado = cargar();
+asegurarConfig();
 let mesVisible = hoy();
 asegurarMes(mesVisible);
 
@@ -253,7 +291,11 @@ function cargar(){
     const raw = localStorage.getItem(STORAGE_KEY);
     if(raw) return JSON.parse(raw);
   }catch(e){ console.warn("No se pudo leer almacenamiento", e); }
-  return { meses:{} };
+  return { meses:{}, config:{moneda:MONEDA_DEFAULT} };
+}
+function asegurarConfig(){
+  if(!estado.config) estado.config={};
+  if(!estado.config.moneda) estado.config.moneda=MONEDA_DEFAULT;
 }
 function guardar(){
   try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(estado)); }
@@ -362,19 +404,60 @@ function render(){
   document.getElementById("kSaldo").textContent = fmt(totalIng - totalGastado);
 
   renderAlertas(m, totalIng, totalPresu);
+  renderGrafica(m);
   guardar();
 }
 
+const COLORES = ["#1f7a5a","#2563eb","#b8860b","#c0392b","#6b3fb8","#0891b2","#db2777","#65a30d","#ea580c","#475569","#0d9488","#9333ea"];
+function renderGrafica(m){
+  const cont=document.getElementById("contGrafica");
+  const datos = m.categorias
+    .map((c,i)=>({nombre:c.nombre, monto:gastadoCat(c), color:COLORES[i%COLORES.length]}))
+    .filter(d=>d.monto>0)
+    .sort((a,b)=>b.monto-a.monto);
+  const total = datos.reduce((s,d)=>s+d.monto,0);
+  if(total<=0){
+    cont.innerHTML=`<div class="fila-vacia">Aún no hay gastos ni pagos registrados este mes.</div>`;
+    return;
+  }
+  // Donut SVG
+  const R=70, r=44, cx=90, cy=90, C=2*Math.PI*R;
+  let off=0;
+  const segs = datos.map(d=>{
+    const frac=d.monto/total;
+    const dash=frac*C;
+    const seg=`<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="${d.color}" stroke-width="${R-r}"
+        stroke-dasharray="${dash} ${C-dash}" stroke-dashoffset="${-off}" transform="rotate(-90 ${cx} ${cy})"></circle>`;
+    off+=dash;
+    return seg;
+  }).join("");
+  const donut=`<svg class="donut" width="180" height="180" viewBox="0 0 180 180" role="img" aria-label="Distribución de gastos">
+      ${segs}
+      <text x="${cx}" y="${cy-6}" text-anchor="middle" class="donut-centro">Total gastado</text>
+      <text x="${cx}" y="${cy+16}" text-anchor="middle" class="donut-total">${fmt(total)}</text>
+    </svg>`;
+  const leyenda = datos.map(d=>`
+    <div class="leyenda-item">
+      <span class="leyenda-color" style="background:${d.color}"></span>
+      <span class="leyenda-nombre">${escapar(d.nombre)}</span>
+      <span class="leyenda-monto">${fmt(d.monto)}</span>
+      <span class="leyenda-pct">${Math.round(d.monto/total*100)}%</span>
+    </div>`).join("");
+  cont.innerHTML=`<div class="grafica-wrap">${donut}<div class="leyenda">${leyenda}</div></div>`;
+}
+
 function renderGastos(c){
-  const items = (c.gastos||[]).map(g=>`
+  const ordenados = (c.gastos||[]).slice().sort((a,b)=>String(a.fecha||"").localeCompare(String(b.fecha||"")));
+  const items = ordenados.map(g=>`
     <div class="gasto-item">
-      <span class="g-desc">${escapar(g.desc||"Gasto")}</span>
+      <span class="g-desc">${g.fecha?`<span class="g-fecha">${fmtFecha(g.fecha)}</span> `:""}${escapar(g.desc||"Gasto")}</span>
       <span><span class="g-monto">${fmt(g.monto)}</span>
         <button class="x" data-del-gasto="${c.id}|${g.id}" title="Eliminar">✕</button></span>
     </div>`).join("");
   return `<div class="gastos-lista">
       ${items || '<div class="cat-montos">Registra tus gastos para ir devengando el presupuesto.</div>'}
       <div class="add-gasto">
+        <input class="fecha" type="date" value="${hoyISO()}" data-gfecha="${c.id}" title="Fecha del gasto">
         <input class="desc" placeholder="Descripción (ej. Súper)" data-gdesc="${c.id}">
         <input class="monto" type="number" inputmode="decimal" min="0" step="any" placeholder="Monto" data-gmonto="${c.id}">
         <button class="btn btn-primario btn-mini" data-addgasto="${c.id}">＋</button>
@@ -456,9 +539,10 @@ document.addEventListener("click", e=>{
     const id=t.dataset.addgasto;
     const desc=document.querySelector(`[data-gdesc="${id}"]`).value.trim();
     const monto=parseFloat(document.querySelector(`[data-gmonto="${id}"]`).value);
+    const fecha=document.querySelector(`[data-gfecha="${id}"]`).value || hoyISO();
     if(!(monto>0)){ alert("Escribe un monto válido para el gasto."); return; }
     const c=m.categorias.find(x=>x.id===id);
-    c.gastos=c.gastos||[]; c.gastos.push({id:uid(), desc, monto}); render();
+    c.gastos=c.gastos||[]; c.gastos.push({id:uid(), desc, monto, fecha}); render();
   }else if(t.dataset.delGasto){
     const [cid,gid]=t.dataset.delGasto.split("|");
     const c=m.categorias.find(x=>x.id===cid);
@@ -474,8 +558,8 @@ document.addEventListener("click", e=>{
 document.addEventListener("keydown", e=>{
   if(e.key!=="Enter") return;
   const el=e.target;
-  if(el.dataset && (el.dataset.gdesc||el.dataset.gmonto)){
-    const id=el.dataset.gdesc||el.dataset.gmonto;
+  if(el.dataset && (el.dataset.gdesc||el.dataset.gmonto||el.dataset.gfecha)){
+    const id=el.dataset.gdesc||el.dataset.gmonto||el.dataset.gfecha;
     const btn=document.querySelector(`[data-addgasto="${id}"]`); if(btn) btn.click();
   }
 });
@@ -546,7 +630,8 @@ document.getElementById("fileImport").onchange=ev=>{
       const data=JSON.parse(r.result);
       if(!data.meses) throw new Error("formato");
       if(confirm("Esto reemplazará tus datos actuales por los del respaldo. ¿Continuar?")){
-        estado=data; mesVisible=hoy(); asegurarMes(mesVisible); render();
+        estado=data; asegurarConfig(); mesVisible=hoy(); asegurarMes(mesVisible);
+        selMoneda.value=moneda(); render();
       }
     }catch(e){ alert("El archivo no es un respaldo válido."); }
     ev.target.value="";
@@ -570,6 +655,13 @@ document.getElementById("btnReset").onclick=()=>{
     render();
   }
 };
+
+// ---------- Moneda ----------
+const selMoneda=document.getElementById("selMoneda");
+MONEDAS.forEach(mo=>{ const o=document.createElement("option"); o.value=mo; o.textContent=mo; selMoneda.appendChild(o); });
+selMoneda.value = moneda();
+if(selMoneda.selectedIndex<0){ const o=document.createElement("option"); o.value=moneda(); o.textContent=moneda(); selMoneda.appendChild(o); selMoneda.value=moneda(); }
+selMoneda.onchange=()=>{ estado.config.moneda=selMoneda.value; render(); };
 
 // ---------- Inicio ----------
 render();

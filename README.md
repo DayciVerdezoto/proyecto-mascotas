@@ -43,15 +43,42 @@ Usa las flechas `‹ ›` del encabezado para moverte entre meses. Cada mes es
 independiente. Con **“Copiar presupuesto del mes anterior”** reutilizas tus
 categorías y montos sin tener que volver a escribirlos.
 
+### 📅 Fecha en cada gasto
+Cada gasto variable se registra con su **fecha** (por defecto la de hoy). En la
+lista se muestra como una etiqueta `día/mes` y los gastos quedan ordenados por fecha.
+
+### 📈 Distribución de gastos
+Una **gráfica de dona** muestra qué porcentaje de tu dinero se va en cada categoría,
+con su leyenda y montos. Se actualiza sola conforme registras pagos y gastos.
+
+### 💱 Moneda
+Elige tu moneda desde el **selector** en la parte inferior (`Q`, `$`, `€`, `MXN`,
+`S/`, etc.). Queda guardada con tus datos.
+
 ### 💾 Respaldo
 - **Exportar respaldo**: descarga un archivo con todos tus datos.
 - **Importar respaldo**: restaura tus datos en este u otro dispositivo.
 
+## 🌐 Usarla en línea (GitHub Pages)
+
+El repositorio incluye un flujo automático (`.github/workflows/deploy-pages.yml`)
+que publica la app en internet. Para activarlo **una sola vez**:
+
+1. Ve a tu repositorio en GitHub → **Settings** → **Pages**.
+2. En **Build and deployment → Source**, elige **GitHub Actions**.
+3. Asegúrate de que estos cambios estén en la rama **main** (al fusionar el Pull
+   Request se despliega solo).
+
+Quedará disponible en `https://dayciverdezoto.github.io/proyecto-mascotas/` y podrás
+abrirla desde el celular o la computadora sin el archivo.
+
+> Nota: la versión en línea sigue guardando los datos **en cada dispositivo** (no se
+> sincroniza sola entre celular y computadora). Para mover datos entre dispositivos,
+> usa Exportar / Importar respaldo.
+
 ## Notas
 
-- La moneda por defecto es el Quetzal (`Q`). Para cambiarla, edita la línea
-  `const MONEDA = "Q";` al inicio del bloque `<script>` en `index.html`
-  (por ejemplo `"$"`).
-- El umbral de alerta es el 80% (`const UMBRAL_ALERTA = 0.8;`); puedes ajustarlo.
+- El umbral de alerta es el 80% (`const UMBRAL_ALERTA = 0.8;`); puedes ajustarlo
+  al inicio del bloque `<script>` en `index.html`.
 - Los datos viven en el navegador donde la usas. Si limpias el historial/datos del
   navegador, usa un respaldo para recuperarlos.
