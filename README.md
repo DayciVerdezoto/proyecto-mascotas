@@ -1,84 +1,68 @@
-# 💰 Mi Presupuesto
+# 🔐 Presupuestos
 
-Aplicación web sencilla para llevar tu presupuesto personal mensual. No necesita
-instalación ni internet: es **un solo archivo** (`index.html`) que abres en
-cualquier navegador, en la computadora o el celular. Tus datos se guardan en el
-propio dispositivo.
+Aplicación web para llevar tu **presupuesto personal mensual**, con una **capa de
+seguridad real**: acceso con usuario y contraseña, y **todos tus datos cifrados**
+en tu propio dispositivo. Es **un solo archivo** (`index.html`): se abre en
+cualquier navegador (celular o computadora), sin instalar nada.
+
+## 🔒 Seguridad
+
+Pensada para poder publicarse en un enlace público **sin exponer tu información**:
+
+- **Acceso con usuario y contraseña** que tú creas la primera vez.
+- La contraseña **nunca se guarda**. Con ella se **deriva una llave** usando
+  **PBKDF2 (SHA-256, 250.000 iteraciones)**.
+- Tus datos se guardan **cifrados con AES-256-GCM** (estándar de cifrado fuerte).
+  Sin tu contraseña, son **ilegibles**, aunque alguien tenga acceso a tu dispositivo
+  o al archivo.
+- **Bloqueo automático** tras 15 minutos de inactividad y botón **🔒 Salir**.
+- **Cambio de contraseña** que vuelve a cifrar todos tus datos.
+- **Respaldo cifrado**: el archivo de exportación también queda protegido por tu
+  contraseña.
+
+> ⚠️ **Importante:** como la seguridad es real, **si olvidas tu contraseña no hay
+> forma de recuperar los datos**. Guarda tu contraseña en un lugar seguro y haz
+> respaldos.
+
+### ¿Por qué cifrado y no solo "una pantalla de contraseña"?
+
+Una app que vive en una página pública no puede ocultar su código, así que una
+contraseña que solo tape la pantalla podría saltarse. Por eso la protección de
+verdad está en **cifrar los datos**: lo único que vería un extraño en el enlace
+público es una pantalla de inicio de sesión; tu información sigue cifrada y solo
+en tu dispositivo (nunca se sube a internet).
 
 ## Cómo usarla
 
-1. Abre el archivo **`index.html`** (doble clic, o arrástralo al navegador).
-2. ¡Listo! Empieza a registrar.
+1. Abre **`index.html`** (doble clic) o el enlace publicado.
+2. La **primera vez**: crea tu usuario y contraseña → se genera tu cuenta cifrada.
+3. Las siguientes veces: inicia sesión con tu usuario y contraseña.
 
-## Qué puedes hacer
+## Funciones de presupuesto
 
-### 📥 Ingresos
-- Registra tus ingresos por categoría (Salario, Freelance, Bono, etc.).
-- El **total se suma automáticamente**.
+- **📥 Ingresos por categoría** con total automático.
+- **📤 Categorías de gasto con presupuesto**, de dos tipos:
+  - **Pago fijo** (renta, servicios, préstamos, tarjetas, niños): se marca como
+    pagada → se pinta de **verde** ✅.
+  - **Gasto variable** (alimentación, comidas fuera, transporte): registras cada
+    gasto (con su fecha) y el presupuesto **se va devengando**.
+- **🚦 Semáforo + alerta al 80%**: verde / amarillo (≥80%, con aviso) / rojo (excedido).
+- **📊 Resumen**: ingresos, presupuesto asignado, gastado/pagado y saldo disponible.
+- **📈 Gráfica de dona** con la distribución de gastos por categoría.
+- **💱 Selector de moneda** (Q, $, €, MXN, S/, etc.).
+- **🗓️ Manejo por mes** + copiar el presupuesto del mes anterior.
+- **💾 Exportar / Importar respaldo** (cifrado).
 
-### 📤 Categorías de gasto y presupuesto
-Cada categoría tiene un **presupuesto asignado** y es de uno de dos tipos:
+## 🌐 Publicar en línea (GitHub Pages)
 
-- **Pago fijo** (renta, servicios básicos, préstamos, tarjetas, niños): la marcas
-  como **pagada** y la tarjeta se pinta de **verde** ✅.
-- **Gasto variable** (alimentación, comidas fuera de casa, transporte): registras
-  cada gasto y el presupuesto **se va devengando**. Una barra muestra cuánto llevas.
+El repositorio incluye `.github/workflows/deploy-pages.yml`, que publica la app
+automáticamente. Para que el sitio quede accesible se requiere que el repositorio
+sea **público** (o un plan que permita Pages en repos privados). Una vez público,
+el flujo activa Pages solo y la app queda en:
 
-Vienen precargadas las categorías que sueles usar; puedes **editarlas, borrarlas o
-agregar nuevas**.
+`https://dayciverdezoto.github.io/proyecto-mascotas/`
 
-### 🚦 Semáforo y alertas
-- **Verde**: vas bien o ya está pagado.
-- **Amarillo**: llegaste o pasaste el **80%** del presupuesto → aparece una alerta.
-- **Rojo**: te **excediste** del presupuesto.
+Gracias al cifrado, publicarla en un enlace público **no expone tus datos**.
 
-Las alertas se muestran arriba de todo para que no se te pasen.
-
-### 📊 Resumen del mes
-Arriba ves cuatro indicadores: **ingresos**, **presupuesto asignado**,
-**gastado/pagado** y **saldo disponible**.
-
-### 🗓️ Por mes
-Usa las flechas `‹ ›` del encabezado para moverte entre meses. Cada mes es
-independiente. Con **“Copiar presupuesto del mes anterior”** reutilizas tus
-categorías y montos sin tener que volver a escribirlos.
-
-### 📅 Fecha en cada gasto
-Cada gasto variable se registra con su **fecha** (por defecto la de hoy). En la
-lista se muestra como una etiqueta `día/mes` y los gastos quedan ordenados por fecha.
-
-### 📈 Distribución de gastos
-Una **gráfica de dona** muestra qué porcentaje de tu dinero se va en cada categoría,
-con su leyenda y montos. Se actualiza sola conforme registras pagos y gastos.
-
-### 💱 Moneda
-Elige tu moneda desde el **selector** en la parte inferior (`Q`, `$`, `€`, `MXN`,
-`S/`, etc.). Queda guardada con tus datos.
-
-### 💾 Respaldo
-- **Exportar respaldo**: descarga un archivo con todos tus datos.
-- **Importar respaldo**: restaura tus datos en este u otro dispositivo.
-
-## 🌐 Usarla en línea (GitHub Pages)
-
-El repositorio incluye un flujo automático (`.github/workflows/deploy-pages.yml`)
-que publica la app en internet. Para activarlo **una sola vez**:
-
-1. Ve a tu repositorio en GitHub → **Settings** → **Pages**.
-2. En **Build and deployment → Source**, elige **GitHub Actions**.
-3. Asegúrate de que estos cambios estén en la rama **main** (al fusionar el Pull
-   Request se despliega solo).
-
-Quedará disponible en `https://dayciverdezoto.github.io/proyecto-mascotas/` y podrás
-abrirla desde el celular o la computadora sin el archivo.
-
-> Nota: la versión en línea sigue guardando los datos **en cada dispositivo** (no se
-> sincroniza sola entre celular y computadora). Para mover datos entre dispositivos,
-> usa Exportar / Importar respaldo.
-
-## Notas
-
-- El umbral de alerta es el 80% (`const UMBRAL_ALERTA = 0.8;`); puedes ajustarlo
-  al inicio del bloque `<script>` en `index.html`.
-- Los datos viven en el navegador donde la usas. Si limpias el historial/datos del
-  navegador, usa un respaldo para recuperarlos.
+> Nota: los datos se guardan **en cada dispositivo** (no se sincronizan solos entre
+> celular y computadora). Para moverlos, usa **Exportar / Importar respaldo**.
