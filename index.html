@@ -306,12 +306,23 @@
     <span>· Alerta automática al 80% del presupuesto</span>
   </div>
 
+  <div class="seccion">
+    <div class="seccion-cab"><h2>☁️ Respaldo en Google Drive <span class="sub">— para no perder tus datos</span></h2></div>
+    <div class="seccion-cuerpo">
+      <p class="hint" style="margin:0 0 12px;">Tus datos se guardan en este iPhone. Para tenerlos a salvo y poder verlos en cualquier dispositivo, guarda de vez en cuando una copia <b>cifrada</b> en tu Google Drive. Para recuperarla, la descargas de Drive y usas “Importar / Restaurar”.</p>
+      <div class="pie-tools" style="margin:0;">
+        <button class="btn btn-primario" id="btnDrive">☁️ Guardar en Google Drive / iCloud</button>
+        <button class="btn btn-sec" id="btnExportar">⬇️ Descargar copia</button>
+        <button class="btn btn-sec" id="btnImportar">⬆️ Importar / Restaurar</button>
+      </div>
+      <div class="hint" id="driveMsg" style="margin-top:10px;"></div>
+    </div>
+  </div>
+
   <div class="pie-tools">
-    <button class="btn btn-sec" id="btnExportar">⬇️ Exportar respaldo cifrado</button>
-    <button class="btn btn-sec" id="btnImportar">⬆️ Importar respaldo</button>
     <button class="btn btn-sec" id="btnCopiarMes">📋 Copiar presupuesto del mes anterior</button>
     <button class="btn btn-peligro" id="btnReset">🗑️ Borrar datos del mes</button>
-    <input type="file" id="fileImport" accept="application/json" style="display:none">
+    <input type="file" id="fileImport" accept="application/json,.json" style="display:none">
   </div>
 </div>
 </div>
@@ -438,7 +449,10 @@ function entrarApp(){
   document.getElementById("app").classList.remove("oculto");
   document.getElementById("chipUsuario").textContent=vault.usuario||"—";
   asegurarConfig(); mesVisible=hoy(); asegurarMes(mesVisible); poblarMoneda();
-  document.getElementById("gFecha").value=hoyISO(); registrarActividad(); render();
+  document.getElementById("gFecha").value=hoyISO(); registrarActividad(); pedirPersistencia(); render();
+}
+async function pedirPersistencia(){
+  try{ if(navigator.storage && navigator.storage.persist){ await navigator.storage.persist(); } }catch(e){}
 }
 function bloquear(){ cryptoKey=null; estado=null;
   document.getElementById("app").classList.add("oculto"); document.getElementById("candado").classList.remove("oculto");
@@ -798,9 +812,33 @@ function poblarMoneda(){ selMoneda.innerHTML="";
 selMoneda.onchange=()=>{ estado.config.moneda=selMoneda.value; render(); };
 
 // Herramientas
-document.getElementById("btnExportar").onclick=()=>{
-  const blob=new Blob([JSON.stringify(vault,null,2)],{type:"application/json"});
-  const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=`presupuestos-respaldo-${hoy()}.json`; a.click(); URL.revokeObjectURL(a.href); };
+function nombreRespaldo(){ return `presupuestos-respaldo-${hoy()}.json`; }
+function contenidoRespaldo(){ return JSON.stringify(vault,null,2); }
+function descargarRespaldo(){
+  const blob=new Blob([contenidoRespaldo()],{type:"application/json"});
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=nombreRespaldo(); a.click(); URL.revokeObjectURL(a.href);
+}
+document.getElementById("btnExportar").onclick=descargarRespaldo;
+
+// Guardar en Google Drive / iCloud usando el menú de compartir del iPhone
+document.getElementById("btnDrive").onclick=async()=>{
+  const msg=document.getElementById("driveMsg"); msg.textContent="";
+  const file=new File([contenidoRespaldo()], nombreRespaldo(), {type:"application/json"});
+  try{
+    if(navigator.canShare && navigator.canShare({files:[file]})){
+      await navigator.share({ files:[file], title:"Respaldo de Presupuestos",
+        text:"Copia cifrada de tu presupuesto. Guárdala en Google Drive (o iCloud)." });
+      msg.textContent="✅ Si elegiste Google Drive, tu copia quedó guardada ahí.";
+    }else{
+      descargarRespaldo();
+      msg.innerHTML="Tu navegador descargó el archivo. Ábrelo y toca <b>Compartir → Google Drive</b> para guardarlo ahí.";
+    }
+  }catch(e){
+    if(e && e.name==="AbortError"){ msg.textContent="Cancelaste el guardado."; return; }
+    descargarRespaldo();
+    msg.innerHTML="Descargué el archivo; guárdalo en Google Drive desde <b>Compartir</b>.";
+  }
+};
 document.getElementById("btnImportar").onclick=()=>document.getElementById("fileImport").click();
 document.getElementById("fileImport").onchange=ev=>{
   const f=ev.target.files[0]; if(!f) return; const r=new FileReader();
