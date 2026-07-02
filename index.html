@@ -176,6 +176,7 @@
       <div class="campo"><label>Contraseña</label>
         <input id="loginPass" type="password" autocomplete="current-password"></div>
       <label class="ver-pass"><input type="checkbox" id="loginVer" style="width:auto"> Mostrar contraseña</label>
+      <label class="ver-pass"><input type="checkbox" id="loginMantener" style="width:auto" checked> Mantener sesión iniciada en este dispositivo</label>
       <button type="submit" class="btn-auth" id="btnLogin">Entrar</button>
       <div class="auth-link"><button type="button" id="irBorrar">¿Olvidaste tu contraseña?</button></div>
     </form>
@@ -193,6 +194,7 @@
         <input id="regHint" placeholder="Ej. el nombre de mi primera mascota" maxlength="80">
         <div class="hint">⚠️ No escribas aquí tu contraseña; es solo una ayuda para recordarla.</div></div>
       <label class="ver-pass"><input type="checkbox" id="regVer" style="width:auto"> Mostrar contraseña</label>
+      <label class="ver-pass"><input type="checkbox" id="regMantener" style="width:auto" checked> Mantener sesión iniciada en este dispositivo</label>
       <button type="submit" class="btn-auth" id="btnRegistro">Crear cuenta segura</button>
       <div class="auth-aviso">🔒 Tus datos se guardan <b>cifrados</b> en este dispositivo. La contraseña no se guarda en ningún lado. <b>Si la olvidas, no se pueden recuperar los datos.</b></div>
     </form>
@@ -303,7 +305,9 @@
 
   <div class="config-linea">
     <label for="selMoneda">Moneda:</label><select id="selMoneda"></select>
-    <span>· Alerta automática al 80% del presupuesto</span>
+    <span>·</span>
+    <label for="selCorte">Mi mes va del día</label><select id="selCorte"></select><span>al mismo del mes siguiente</span>
+    <span>· Alerta al 80%</span>
   </div>
 
   <div class="seccion">
@@ -361,14 +365,20 @@
 /* ============================================================
    SEGURIDAD: login + cifrado AES-256-GCM (clave por PBKDF2)
    ============================================================ */
-const VAULT_KEY="presupuestos_vault_v1";
-const ITERACIONES=250000, CHECK_TOKEN="PRESUPUESTOS_OK", INACTIVIDAD_MS=15*60*1000;
+const VAULT_KEY="presupuestos_vault_v1", SESSION_KEY="presupuestos_sesion_v1";
+const ITERACIONES=250000, CHECK_TOKEN="PRESUPUESTOS_OK", INACTIVIDAD_MS=30*60*1000;
 const subtle=(window.crypto&&window.crypto.subtle)?window.crypto.subtle:null;
 const txtEnc=new TextEncoder(), txtDec=new TextDecoder();
 function b64(buf){ let s=""; const b=new Uint8Array(buf); for(let i=0;i<b.length;i++) s+=String.fromCharCode(b[i]); return btoa(s); }
 function deB64(str){ return Uint8Array.from(atob(str),c=>c.charCodeAt(0)); }
 async function derivarLlave(p,salt){ const base=await subtle.importKey("raw",txtEnc.encode(p),"PBKDF2",false,["deriveKey"]);
-  return subtle.deriveKey({name:"PBKDF2",salt,iterations:ITERACIONES,hash:"SHA-256"},base,{name:"AES-GCM",length:256},false,["encrypt","decrypt"]); }
+  return subtle.deriveKey({name:"PBKDF2",salt,iterations:ITERACIONES,hash:"SHA-256"},base,{name:"AES-GCM",length:256},true,["encrypt","decrypt"]); }
+// Sesión recordada en el dispositivo (opcional): guarda la llave para no pedir la contraseña cada vez.
+async function guardarSesion(key){ try{ const raw=await subtle.exportKey("raw",key); localStorage.setItem(SESSION_KEY,b64(raw)); }catch(e){} }
+function haySesion(){ return !!localStorage.getItem(SESSION_KEY); }
+function borrarSesion(){ localStorage.removeItem(SESSION_KEY); }
+async function cargarSesion(){ const s=localStorage.getItem(SESSION_KEY); if(!s) return null;
+  try{ return await subtle.importKey("raw",deB64(s),{name:"AES-GCM",length:256},true,["encrypt","decrypt"]); }catch(e){ return null; } }
 async function cifrar(key,obj){ const iv=crypto.getRandomValues(new Uint8Array(12));
   const ct=await subtle.encrypt({name:"AES-GCM",iv},key,txtEnc.encode(JSON.stringify(obj))); return {iv:b64(iv),ct:b64(ct)}; }
 async function descifrar(key,blob){ const pt=await subtle.decrypt({name:"AES-GCM",iv:deB64(blob.iv)},key,deB64(blob.ct)); return JSON.parse(txtDec.decode(pt)); }
@@ -421,7 +431,9 @@ document.getElementById("formRegistro").addEventListener("submit",async e=>{
     const salt=crypto.getRandomValues(new Uint8Array(16)); const key=await derivarLlave(p1,salt);
     const datos=estadoNuevo();
     vault={ v:1, usuario, hint, salt:b64(salt), iter:ITERACIONES, check:await cifrar(key,CHECK_TOKEN), data:await cifrar(key,datos) };
-    localStorage.setItem(VAULT_KEY,JSON.stringify(vault)); cryptoKey=key; estado=datos; entrarApp();
+    localStorage.setItem(VAULT_KEY,JSON.stringify(vault)); cryptoKey=key; estado=datos;
+    if(document.getElementById("regMantener").checked) await guardarSesion(key); else borrarSesion();
+    entrarApp();
   }catch(ex){ mostrarError(err,"No se pudo crear la cuenta: "+ex.message); }
   finally{ btn.disabled=false; btn.textContent="Crear cuenta segura"; }
 });
@@ -435,20 +447,21 @@ document.getElementById("formLogin").addEventListener("submit",async e=>{
     try{ ok=(await descifrar(key,vault.check))===CHECK_TOKEN; }catch(_){ ok=false; }
     if(!ok || (vault.usuario && usuario && usuario!==vault.usuario)){ mostrarError(err,"Usuario o contraseña incorrectos."); return; }
     cryptoKey=key; estado=await descifrar(key,vault.data); estadoMigrar();
+    if(document.getElementById("loginMantener").checked) await guardarSesion(key); else borrarSesion();
     document.getElementById("loginPass").value=""; entrarApp();
   }catch(ex){ mostrarError(err,"No se pudo entrar: "+ex.message); }
   finally{ btn.disabled=false; btn.textContent="Entrar"; }
 });
 document.getElementById("irBorrar").addEventListener("click",()=>{
   if(confirm("No es posible recuperar la contraseña porque los datos están cifrados.\n\n¿Deseas BORRAR todo y empezar de cero? No se puede deshacer.")){
-    localStorage.removeItem(VAULT_KEY); location.reload(); }
+    localStorage.removeItem(VAULT_KEY); borrarSesion(); location.reload(); }
 });
 function entrarApp(){
   limpiarError(document.getElementById("authError"));
   document.getElementById("candado").classList.add("oculto");
   document.getElementById("app").classList.remove("oculto");
   document.getElementById("chipUsuario").textContent=vault.usuario||"—";
-  asegurarConfig(); mesVisible=hoy(); asegurarMes(mesVisible); poblarMoneda();
+  asegurarConfig(); mesVisible=periodoActual(); asegurarMes(mesVisible); poblarMoneda(); poblarCorte();
   document.getElementById("gFecha").value=hoyISO(); registrarActividad(); pedirPersistencia(); render();
 }
 async function pedirPersistencia(){
@@ -457,10 +470,12 @@ async function pedirPersistencia(){
 function bloquear(){ cryptoKey=null; estado=null;
   document.getElementById("app").classList.add("oculto"); document.getElementById("candado").classList.remove("oculto");
   document.getElementById("loginPass").value=""; iniciarSeguridad(); }
-document.getElementById("btnBloquear").addEventListener("click",bloquear);
+// "Salir" cierra la sesión de verdad (borra la sesión recordada y pide contraseña la próxima vez).
+document.getElementById("btnBloquear").addEventListener("click",()=>{ borrarSesion(); bloquear(); });
 let ultActividad=Date.now(); function registrarActividad(){ ultActividad=Date.now(); }
 ["click","keydown","mousemove","touchstart"].forEach(ev=>document.addEventListener(ev,registrarActividad,{passive:true}));
-setInterval(()=>{ if(cryptoKey&&Date.now()-ultActividad>INACTIVIDAD_MS) bloquear(); },30000);
+// El bloqueo por inactividad solo aplica si NO elegiste mantener la sesión iniciada.
+setInterval(()=>{ if(cryptoKey&&!haySesion()&&Date.now()-ultActividad>INACTIVIDAD_MS) bloquear(); },30000);
 let persistChain=Promise.resolve();
 function persist(){ persistChain=persistChain.then(async()=>{ if(!cryptoKey||!vault) return;
   vault.data=await cifrar(cryptoKey,estado); localStorage.setItem(VAULT_KEY,JSON.stringify(vault)); }).catch(e=>console.error(e)); }
@@ -474,11 +489,19 @@ let mesVisible=null;
 function uid(){ return Math.random().toString(36).slice(2,10)+Date.now().toString(36).slice(-4); }
 function hoy(){ const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`; }
 function hoyISO(){ const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; }
+// Ciclo/periodo según el "día de corte" (ej. del 25 al 25). La clave YYYY-MM es el mes en que INICIA el ciclo.
+function diaCorte(){ return (estado&&estado.config&&estado.config.diaCorte)||25; }
+function periodoConCorte(date,dc){ let y=date.getFullYear(), m=date.getMonth(); if(date.getDate()<dc){ m-=1; if(m<0){ m=11; y-=1; } } return `${y}-${String(m+1).padStart(2,"0")}`; }
+function periodoActual(){ return periodoConCorte(new Date(),diaCorte()); }
 function moneda(){ return (estado&&estado.config&&estado.config.moneda)||MONEDA_DEFAULT; }
 function fmt(n){ return moneda()+" "+(Number(n)||0).toLocaleString("es-GT",{minimumFractionDigits:2,maximumFractionDigits:2}); }
 function fmtFecha(iso){ if(!iso) return ""; const p=iso.split("-"); return `${p[2]}/${p[1]}`; }
-function etiquetaMes(c){ const [a,m]=c.split("-"); return `${MESES[parseInt(m,10)-1]} ${a}`; }
-function etiquetaMesCorta(c){ const [a,m]=c.split("-"); return `${MESES[parseInt(m,10)-1].slice(0,3)} ${a.slice(2)}`; }
+function etiquetaMes(c){ const [a,m]=c.split("-").map(Number); const dc=diaCorte();
+  if(dc<=1) return `${MESES[m-1]} ${a}`;
+  const finMes=MESES[m%12], finAnio=(m===12)?a+1:a;
+  return `${dc} ${MESES[m-1].slice(0,3)} – ${dc-1} ${finMes.slice(0,3)} ${finAnio}`; }
+function etiquetaMesCorta(c){ const [a,m]=c.split("-").map(Number); const dc=diaCorte();
+  return dc<=1 ? `${MESES[m-1].slice(0,3)} ${String(a).slice(2)}` : `${dc} ${MESES[m-1].slice(0,3)}`; }
 function gastadoCat(c){ return (c.gastos||[]).reduce((s,g)=>s+(Number(g.monto)||0),0); }
 function estaPagado(c){ const p=Number(c.presupuesto)||0; return p>0 && gastadoCat(c)>=p-0.005; }
 
@@ -494,7 +517,7 @@ function categoriasIniciales(){
     {id:uid(),nombre:"Transporte",tipo:"variable",presupuesto:0,gastos:[]},
   ];
 }
-function estadoNuevo(){ const c=hoy(); return { meses:{ [c]:{ ingresos:[], categorias:categoriasIniciales() } }, config:{moneda:MONEDA_DEFAULT} }; }
+function estadoNuevo(){ const c=periodoConCorte(new Date(),25); return { meses:{ [c]:{ ingresos:[], categorias:categoriasIniciales() } }, config:{moneda:MONEDA_DEFAULT, diaCorte:25} }; }
 function estadoMigrar(){
   if(!estado.meses) estado.meses={}; if(!estado.config) estado.config={moneda:MONEDA_DEFAULT};
   // Compatibilidad: versiones anteriores usaban "pagado" (booleano) en categorías fijas.
@@ -509,7 +532,7 @@ function estadoMigrar(){
     });
   });
 }
-function asegurarConfig(){ if(!estado.config) estado.config={}; if(!estado.config.moneda) estado.config.moneda=MONEDA_DEFAULT; }
+function asegurarConfig(){ if(!estado.config) estado.config={}; if(!estado.config.moneda) estado.config.moneda=MONEDA_DEFAULT; if(!estado.config.diaCorte) estado.config.diaCorte=25; }
 function asegurarMes(clave){
   if(!estado.meses) estado.meses={};
   if(!estado.meses[clave]){ const primero=Object.keys(estado.meses).length===0;
@@ -799,6 +822,7 @@ document.getElementById("cpGuardar").onclick=async()=>{
     const salt=crypto.getRandomValues(new Uint8Array(16)); const keyN=await derivarLlave(n1,salt);
     vault.salt=b64(salt); vault.hint=hint; vault.check=await cifrar(keyN,CHECK_TOKEN); vault.data=await cifrar(keyN,estado);
     localStorage.setItem(VAULT_KEY,JSON.stringify(vault)); cryptoKey=keyN;
+    if(haySesion()) await guardarSesion(keyN);
     modalPass.classList.remove("activo"); alert("Contraseña actualizada. Tus datos se cifraron con la nueva contraseña.");
   }catch(ex){ mostrarError(err,"No se pudo cambiar: "+ex.message); }
 };
@@ -810,6 +834,13 @@ function poblarMoneda(){ selMoneda.innerHTML="";
   if(!MONEDAS.includes(moneda())){ const o=document.createElement("option"); o.value=moneda(); o.textContent=moneda(); selMoneda.appendChild(o); }
   selMoneda.value=moneda(); }
 selMoneda.onchange=()=>{ estado.config.moneda=selMoneda.value; render(); };
+
+// Día de corte (ciclo del mes, ej. 25 al 25)
+const selCorte=document.getElementById("selCorte");
+function poblarCorte(){ selCorte.innerHTML="";
+  for(let d=1; d<=28; d++){ const o=document.createElement("option"); o.value=d; o.textContent=d; selCorte.appendChild(o); }
+  selCorte.value=diaCorte(); }
+selCorte.onchange=()=>{ estado.config.diaCorte=parseInt(selCorte.value,10)||25; mesVisible=periodoActual(); asegurarMes(mesVisible); render(); };
 
 // Herramientas
 function nombreRespaldo(){ return `presupuestos-respaldo-${hoy()}.json`; }
@@ -851,9 +882,9 @@ document.getElementById("fileImport").onchange=ev=>{
       if(!ok){ alert("Contraseña incorrecta para este respaldo."); ev.target.value=""; return; }
       if(confirm("Esto reemplazará tus datos actuales por los del respaldo. ¿Continuar?")){
         vault=data; cryptoKey=key; estado=await descifrar(key,data.data); estadoMigrar();
-        localStorage.setItem(VAULT_KEY,JSON.stringify(vault));
+        localStorage.setItem(VAULT_KEY,JSON.stringify(vault)); if(haySesion()) await guardarSesion(key);
         document.getElementById("chipUsuario").textContent=vault.usuario||"—";
-        asegurarConfig(); mesVisible=hoy(); asegurarMes(mesVisible); poblarMoneda(); render(); alert("Respaldo importado correctamente."); }
+        asegurarConfig(); mesVisible=periodoActual(); asegurarMes(mesVisible); poblarMoneda(); poblarCorte(); render(); alert("Respaldo importado correctamente."); }
     }catch(e){ alert("El archivo no es un respaldo válido de Presupuestos."); }
     ev.target.value="";
   };
@@ -869,8 +900,23 @@ document.getElementById("btnCopiarMes").onclick=()=>{
 document.getElementById("btnReset").onclick=()=>{ if(confirm(`¿Borrar TODOS los datos de ${etiquetaMes(mesVisible)}? No se puede deshacer.`)){
   estado.meses[mesVisible]={ ingresos:[], categorias:[] }; render(); } };
 
-// Inicio
-iniciarSeguridad();
+// Inicio: si dejaste la sesión iniciada en este dispositivo, entra sin pedir contraseña.
+async function arranque(){
+  if(!subtle){ iniciarSeguridad(); return; }
+  vault=leerVault();
+  if(vault && haySesion()){
+    const k=await cargarSesion();
+    if(k){
+      try{
+        if((await descifrar(k,vault.check))===CHECK_TOKEN){
+          cryptoKey=k; estado=await descifrar(k,vault.data); estadoMigrar(); entrarApp(); return;
+        }
+      }catch(e){ borrarSesion(); }
+    }
+  }
+  iniciarSeguridad();
+}
+arranque();
 </script>
 </body>
 </html>
