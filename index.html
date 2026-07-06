@@ -236,7 +236,7 @@
 
   <!-- REGISTRAR GASTO (un solo lugar) -->
   <div class="seccion destacada">
-    <div class="seccion-cab"><h2>➕ Registrar gasto <span class="sub">— elige de qué presupuesto se descuenta</span></h2></div>
+    <div class="seccion-cab"><h2>➕ Registrar gasto <span class="sub">— gastos variables (comida, transporte…); los fijos se pagan con su botón</span></h2></div>
     <div class="seccion-cuerpo">
       <div class="form-grid">
         <div class="campo"><label>Fecha</label><input id="gFecha" type="date"></div>
@@ -581,17 +581,18 @@ function render(){
 
 function poblarSelectGasto(m){
   const sel=document.getElementById("gCat"); const prev=sel.value; sel.innerHTML="";
-  if(!m.categorias.length){ const o=document.createElement("option"); o.value=""; o.textContent="Crea una categoría primero"; sel.appendChild(o); document.getElementById("gHint").textContent="💡 Primero crea categorías abajo para poder registrar gastos."; return; }
+  // Solo presupuestos de GASTOS VARIABLES (los fijos se pagan con su botón "Marcar pagado").
+  const variables=m.categorias.filter(c=>c.tipo==="variable");
+  if(!variables.length){
+    const o=document.createElement("option"); o.value=""; o.textContent="Crea una categoría de gasto variable"; sel.appendChild(o);
+    document.getElementById("gHint").textContent="💡 Crea una categoría de tipo “Gasto variable” (comida, transporte…) para registrar gastos aquí.";
+    return;
+  }
   document.getElementById("gHint").textContent="";
-  [["fijo","Gastos fijos"],["variable","Gastos variables"]].forEach(([tipo,lbl])=>{
-    const arr=m.categorias.filter(c=>c.tipo===tipo); if(!arr.length) return;
-    const og=document.createElement("optgroup"); og.label=lbl;
-    arr.forEach(c=>{ const o=document.createElement("option"); o.value=c.id;
-      const rest=(Number(c.presupuesto)||0)-gastadoCat(c);
-      o.textContent=`${c.nombre} (disp. ${fmt(Math.max(rest,0))})`; og.appendChild(o); });
-    sel.appendChild(og);
-  });
-  if(prev && m.categorias.some(c=>c.id===prev)) sel.value=prev;
+  variables.forEach(c=>{ const o=document.createElement("option"); o.value=c.id;
+    const rest=(Number(c.presupuesto)||0)-gastadoCat(c);
+    o.textContent=`${c.nombre} (disp. ${fmt(Math.max(rest,0))})`; sel.appendChild(o); });
+  if(prev && variables.some(c=>c.id===prev)) sel.value=prev;
 }
 
 function tarjetaCat(c){
