@@ -297,6 +297,21 @@
     <div class="seccion-cuerpo"><div id="contGrafica"></div></div>
   </div>
 
+  <!-- PROYECCION / PLANIFICAR -->
+  <div class="seccion">
+    <div class="seccion-cab"><h2>📆 Planificar próximos meses <span class="sub">— proyecta tus ingresos y gastos</span></h2></div>
+    <div class="seccion-cuerpo">
+      <div class="form-linea" style="align-items:center;">
+        <span class="cat-montos">Planificar los próximos</span>
+        <select id="selPlanN" style="width:auto;"><option>2</option><option selected>3</option><option>4</option><option>6</option></select>
+        <span class="cat-montos">meses copiando este</span>
+        <button class="btn btn-primario btn-mini" id="btnPlanificar">📋 Generar plan</button>
+      </div>
+      <div class="hint" style="margin:8px 0 4px;">Se crean los meses que estén vacíos con tus ingresos y presupuestos actuales. Luego ajusta cada uno con las flechas ‹ › de arriba. No se sobreescriben meses que ya tengan datos.</div>
+      <div id="contProyeccion" style="margin-top:10px;"></div>
+    </div>
+  </div>
+
   <!-- COMPARATIVO MENSUAL -->
   <div class="seccion">
     <div class="seccion-cab"><h2>📅 Comparativo por mes <span class="sub">— tu historial para analizar</span></h2></div>
@@ -575,6 +590,7 @@ function render(){
   renderAlertas(m,totalIng,totalPresu);
   renderBarras(m);
   renderGrafica(m);
+  renderProyeccion();
   renderMeses();
   persist();
 }
@@ -721,6 +737,60 @@ function renderMeses(){
       </span>
     </div>`).join("");
   cont.innerHTML=html;
+}
+
+// Próximos N periodos (claves YYYY-MM) empezando en la clave dada (incluida)
+function proximosPeriodos(desdeClave, n){
+  const [a,m]=desdeClave.split("-").map(Number); const arr=[];
+  for(let i=0;i<n;i++){ const d=new Date(a, m-1+i, 1); arr.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`); }
+  return arr;
+}
+function totalesPeriodo(clave){
+  const m=estado.meses[clave];
+  if(!m) return { ing:0, presu:0, existe:false };
+  const ing=m.ingresos.reduce((s,i)=>s+(Number(i.monto)||0),0);
+  const presu=m.categorias.reduce((s,c)=>s+(Number(c.presupuesto)||0),0);
+  return { ing, presu, existe:true };
+}
+function renderProyeccion(){
+  const cont=document.getElementById("contProyeccion");
+  const periodos=proximosPeriodos(mesVisible, 4); // actual + próximos 3
+  let acum=0;
+  const filas=periodos.map((k,idx)=>{
+    const {ing,presu,existe}=totalesPeriodo(k);
+    const saldo=ing-presu; acum+=saldo;
+    const esActual=k===mesVisible;
+    return `<tr${esActual?' style="background:var(--verde-claro)"':''}>
+        <td><button class="btn-link" data-irmes="${k}" style="text-decoration:none;padding:0;font-weight:${esActual?'700':'400'}">${etiquetaMes(k)}${esActual?' • actual':(existe?'':' • sin planificar')}</button></td>
+        <td class="num">${fmt(ing)}</td>
+        <td class="num">${fmt(presu)}</td>
+        <td class="num" style="color:${saldo<0?'var(--rojo)':'var(--verde)'}">${fmt(saldo)}</td>
+        <td class="num" style="color:${acum<0?'var(--rojo)':'var(--azul)'}">${fmt(acum)}</td>
+      </tr>`;
+  }).join("");
+  cont.innerHTML=`<div style="overflow-x:auto"><table>
+      <thead><tr><th>Periodo</th><th class="num">Ingresos</th><th class="num">Presupuesto</th><th class="num">Saldo del mes</th><th class="num">Saldo acumulado</th></tr></thead>
+      <tbody>${filas}</tbody></table></div>
+    <div class="hint" style="margin-top:8px;">“Saldo del mes” = ingresos − presupuesto planificado. “Saldo acumulado” suma lo que te va quedando mes a mes. Toca un periodo para editarlo.</div>`;
+}
+function planificar(n){
+  const base=mesData();
+  if(!base.ingresos.length && !base.categorias.length){ alert("Primero registra tus ingresos y presupuestos en el mes actual; se usarán como plantilla."); return; }
+  const periodos=proximosPeriodos(mesVisible, n+1).slice(1); // los próximos n (sin el actual)
+  let creados=0, saltados=0;
+  periodos.forEach(clave=>{
+    const ex=estado.meses[clave];
+    const vacio=!ex || ((!ex.ingresos||!ex.ingresos.length) && (!ex.categorias||!ex.categorias.length));
+    if(vacio){
+      estado.meses[clave]={
+        ingresos: base.ingresos.map(i=>({id:uid(),nombre:i.nombre,monto:i.monto})),
+        categorias: base.categorias.map(c=>({id:uid(),nombre:c.nombre,tipo:c.tipo,presupuesto:Number(c.presupuesto)||0,gastos:[]}))
+      };
+      creados++;
+    }else saltados++;
+  });
+  render();
+  alert(`Listo. Planifiqué ${creados} mes(es) copiando tus ingresos y presupuestos actuales${saltados?` (omití ${saltados} que ya tenían datos)`:""}. Ajusta cada uno con las flechas ‹ › de arriba.`);
 }
 
 function escapar(s){ return String(s??"").replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
@@ -900,6 +970,7 @@ document.getElementById("btnCopiarMes").onclick=()=>{
 };
 document.getElementById("btnReset").onclick=()=>{ if(confirm(`¿Borrar TODOS los datos de ${etiquetaMes(mesVisible)}? No se puede deshacer.`)){
   estado.meses[mesVisible]={ ingresos:[], categorias:[] }; render(); } };
+document.getElementById("btnPlanificar").onclick=()=>{ planificar(parseInt(document.getElementById("selPlanN").value,10)||3); };
 
 // Inicio: si dejaste la sesión iniciada en este dispositivo, entra sin pedir contraseña.
 async function arranque(){
