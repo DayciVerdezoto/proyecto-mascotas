@@ -212,6 +212,7 @@
       <button id="mesSig" title="Mes siguiente">›</button>
     </div>
     <span class="usuario-chip">👤 <span id="chipUsuario">—</span></span>
+    <button class="btn-header" id="btnHistorial" title="Deshacer / versiones anteriores">↩︎ Deshacer</button>
     <button class="btn-header" id="btnCambiarPass" title="Cambiar contraseña">🔑</button>
     <button class="btn-header" id="btnBloquear" title="Cerrar sesión">🔒 Salir</button>
   </div>
@@ -308,6 +309,12 @@
         <button class="btn btn-primario btn-mini" id="btnPlanificar">📋 Generar plan</button>
       </div>
       <div class="hint" style="margin:8px 0 4px;">Se crean los meses que estén vacíos con tus ingresos y presupuestos actuales. Luego ajusta cada uno con las flechas ‹ › de arriba. No se sobreescriben meses que ya tengan datos.</div>
+      <div class="form-linea" style="align-items:center; margin-top:12px; padding-top:12px; border-top:1px dashed var(--borde);">
+        <span class="cat-montos">🛟 Traer presupuesto e ingresos de otro mes al mes actual:</span>
+        <select id="selCopiarDe" style="width:auto; min-width:150px;"></select>
+        <button class="btn btn-sec btn-mini" id="btnTraerDe">Traer</button>
+      </div>
+      <div class="hint" style="margin-top:4px;">Útil para restaurar: copia los montos de presupuesto e ingresos del mes que elijas, y <b>conserva los gastos que ya registraste</b> en el mes actual.</div>
       <div id="contProyeccion" style="margin-top:10px;"></div>
     </div>
   </div>
@@ -375,12 +382,22 @@
   </div>
 </div>
 
+<!-- Modal historial / deshacer -->
+<div class="modal-fondo" id="modalHist">
+  <div class="modal">
+    <h3>↩︎ Deshacer / versiones guardadas</h3>
+    <p class="hint" style="margin:-6px 0 12px;">La app guarda automáticamente una copia cada vez que la abres y antes de acciones importantes. Elige un momento para volver a como estaba entonces.</p>
+    <div id="contHist" style="max-height:50vh; overflow:auto;"></div>
+    <div class="modal-acciones"><button class="btn btn-sec" id="histCerrar">Cerrar</button></div>
+  </div>
+</div>
+
 <script>
 "use strict";
 /* ============================================================
    SEGURIDAD: login + cifrado AES-256-GCM (clave por PBKDF2)
    ============================================================ */
-const VAULT_KEY="presupuestos_vault_v1", SESSION_KEY="presupuestos_sesion_v1";
+const VAULT_KEY="presupuestos_vault_v1", SESSION_KEY="presupuestos_sesion_v1", HIST_KEY="presupuestos_historial_v1", HIST_MAX=25;
 const ITERACIONES=250000, CHECK_TOKEN="PRESUPUESTOS_OK", INACTIVIDAD_MS=30*60*1000;
 const subtle=(window.crypto&&window.crypto.subtle)?window.crypto.subtle:null;
 const txtEnc=new TextEncoder(), txtDec=new TextDecoder();
@@ -477,7 +494,8 @@ function entrarApp(){
   document.getElementById("app").classList.remove("oculto");
   document.getElementById("chipUsuario").textContent=vault.usuario||"—";
   asegurarConfig(); mesVisible=periodoActual(); asegurarMes(mesVisible); poblarMoneda(); poblarCorte();
-  document.getElementById("gFecha").value=hoyISO(); registrarActividad(); pedirPersistencia(); render();
+  document.getElementById("gFecha").value=hoyISO(); registrarActividad(); pedirPersistencia();
+  snapshot("Al abrir la app"); render();
 }
 async function pedirPersistencia(){
   try{ if(navigator.storage && navigator.storage.persist){ await navigator.storage.persist(); } }catch(e){}
@@ -494,6 +512,44 @@ setInterval(()=>{ if(cryptoKey&&!haySesion()&&Date.now()-ultActividad>INACTIVIDA
 let persistChain=Promise.resolve();
 function persist(){ persistChain=persistChain.then(async()=>{ if(!cryptoKey||!vault) return;
   vault.data=await cifrar(cryptoKey,estado); localStorage.setItem(VAULT_KEY,JSON.stringify(vault)); }).catch(e=>console.error(e)); }
+
+// ---------- Historial / Deshacer ----------
+function leerHist(){ try{ return JSON.parse(localStorage.getItem(HIST_KEY))||[]; }catch(e){ return []; } }
+async function snapshot(motivo){
+  if(!cryptoKey||!estado) return;
+  try{
+    const blob=await cifrar(cryptoKey, estado);
+    const h=leerHist(); h.push({ ts:new Date().toISOString(), motivo, data:blob });
+    while(h.length>HIST_MAX) h.shift();
+    localStorage.setItem(HIST_KEY, JSON.stringify(h));
+  }catch(e){ console.error("snapshot",e); }
+}
+function fmtHora(iso){ try{ const d=new Date(iso);
+  return d.toLocaleString("es-GT",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"}); }catch(e){ return iso; } }
+async function restaurarVersion(idx){
+  const h=leerHist(); const item=h[idx]; if(!item) return;
+  if(!confirm(`¿Volver a la versión guardada del ${fmtHora(item.ts)}?\n(${item.motivo})\n\nSe reemplazan los datos actuales por los de ese momento.`)) return;
+  await snapshot("Antes de deshacer");
+  try{
+    estado=await descifrar(cryptoKey, item.data); asegurarConfig();
+    if(!estado.meses[mesVisible]){ mesVisible=periodoActual(); } asegurarMes(mesVisible);
+    poblarMoneda(); poblarCorte(); document.getElementById("modalHist").classList.remove("activo"); render();
+    alert("Listo, tus datos volvieron a como estaban en ese momento.");
+  }catch(e){ alert("No se pudo restaurar esa versión."); }
+}
+function renderHist(){
+  const cont=document.getElementById("contHist"); const h=leerHist();
+  if(!h.length){ cont.innerHTML=`<div class="fila-vacia">Aún no hay versiones guardadas. Se irán creando automáticamente a partir de ahora.</div>`; return; }
+  cont.innerHTML=h.map((it,i)=>({it,i})).reverse().map(({it,i})=>`
+    <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; padding:9px 0; border-bottom:1px solid var(--borde);">
+      <span><b>${fmtHora(it.ts)}</b><br><span class="hint">${escapar(it.motivo||"")}</span></span>
+      <button class="btn btn-sec btn-mini" data-restaurar="${i}">Restaurar</button>
+    </div>`).join("");
+}
+document.getElementById("btnHistorial").addEventListener("click",()=>{ renderHist(); document.getElementById("modalHist").classList.add("activo"); });
+document.getElementById("histCerrar").addEventListener("click",()=>document.getElementById("modalHist").classList.remove("activo"));
+document.getElementById("modalHist").addEventListener("click",e=>{ if(e.target.id==="modalHist") e.currentTarget.classList.remove("activo"); });
+document.getElementById("contHist").addEventListener("click",e=>{ const b=e.target.closest("[data-restaurar]"); if(b) restaurarVersion(parseInt(b.dataset.restaurar,10)); });
 
 /* ============================================================
    PRESUPUESTO
@@ -570,6 +626,7 @@ function render(){
   document.getElementById("totalIngresos").textContent=fmt(totalIng);
 
   poblarSelectGasto(m);
+  poblarCopiarDe();
 
   // Categorías (agrupadas)
   let totalPresu=0, totalGastado=0;
@@ -776,6 +833,7 @@ function renderProyeccion(){
 function planificar(n){
   const base=mesData();
   if(!base.ingresos.length && !base.categorias.length){ alert("Primero registra tus ingresos y presupuestos en el mes actual; se usarán como plantilla."); return; }
+  snapshot("Antes de generar el plan");
   const periodos=proximosPeriodos(mesVisible, n+1).slice(1); // los próximos n (sin el actual)
   let creados=0, saltados=0;
   periodos.forEach(clave=>{
@@ -791,6 +849,27 @@ function planificar(n){
   });
   render();
   alert(`Listo. Planifiqué ${creados} mes(es) copiando tus ingresos y presupuestos actuales${saltados?` (omití ${saltados} que ya tenían datos)`:""}. Ajusta cada uno con las flechas ‹ › de arriba.`);
+}
+// Trae presupuesto e ingresos de otro mes al mes actual, CONSERVANDO los gastos ya registrados (por nombre de categoría).
+function poblarCopiarDe(){
+  const sel=document.getElementById("selCopiarDe"); const prev=sel.value; sel.innerHTML="";
+  const claves=Object.keys(estado.meses).filter(k=>k!==mesVisible).sort();
+  if(!claves.length){ const o=document.createElement("option"); o.value=""; o.textContent="(no hay otros meses)"; sel.appendChild(o); return; }
+  claves.forEach(k=>{ const o=document.createElement("option"); o.value=k; o.textContent=etiquetaMes(k); sel.appendChild(o); });
+  if(prev && claves.includes(prev)) sel.value=prev;
+}
+function traerDe(clave){
+  const src=estado.meses[clave]; if(!src){ alert("Elige un mes válido."); return; }
+  if(!confirm(`Traer los presupuestos e ingresos de "${etiquetaMes(clave)}" al mes actual.\nTus gastos ya registrados este mes se conservan. ¿Continuar?`)) return;
+  snapshot("Antes de traer de "+etiquetaMes(clave));
+  const dst=mesData();
+  const gastosPorNombre={};
+  (dst.categorias||[]).forEach(c=>{ (gastosPorNombre[c.nombre]=gastosPorNombre[c.nombre]||[]).push(...(c.gastos||[])); });
+  dst.categorias=(src.categorias||[]).map(c=>({ id:uid(), nombre:c.nombre, tipo:c.tipo, presupuesto:Number(c.presupuesto)||0,
+    gastos:(gastosPorNombre[c.nombre]||[]).map(g=>({...g})) }));
+  dst.ingresos=(src.ingresos||[]).map(i=>({ id:uid(), nombre:i.nombre, monto:i.monto }));
+  render();
+  alert(`Listo. Traje los presupuestos e ingresos de ${etiquetaMes(clave)} y conservé tus gastos de este mes.`);
 }
 
 function escapar(s){ return String(s??"").replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
@@ -952,6 +1031,7 @@ document.getElementById("fileImport").onchange=ev=>{
       try{ ok=(await descifrar(key,data.check))===CHECK_TOKEN; }catch(_){}
       if(!ok){ alert("Contraseña incorrecta para este respaldo."); ev.target.value=""; return; }
       if(confirm("Esto reemplazará tus datos actuales por los del respaldo. ¿Continuar?")){
+        await snapshot("Antes de importar respaldo");
         vault=data; cryptoKey=key; estado=await descifrar(key,data.data); estadoMigrar();
         localStorage.setItem(VAULT_KEY,JSON.stringify(vault)); if(haySesion()) await guardarSesion(key);
         document.getElementById("chipUsuario").textContent=vault.usuario||"—";
@@ -966,11 +1046,13 @@ document.getElementById("btnCopiarMes").onclick=()=>{
   const claveAnt=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`; const ant=estado.meses[claveAnt];
   if(!ant){ alert("No hay un mes anterior con datos para copiar."); return; }
   if(!confirm("Se copiarán las categorías y presupuestos del mes anterior (sin los gastos ni pagos). ¿Continuar?")) return;
+  snapshot("Antes de copiar del mes anterior");
   mesData().categorias=ant.categorias.map(c=>({id:uid(),nombre:c.nombre,tipo:c.tipo,presupuesto:c.presupuesto,gastos:[]})); render();
 };
 document.getElementById("btnReset").onclick=()=>{ if(confirm(`¿Borrar TODOS los datos de ${etiquetaMes(mesVisible)}? No se puede deshacer.`)){
-  estado.meses[mesVisible]={ ingresos:[], categorias:[] }; render(); } };
+  snapshot("Antes de borrar el mes"); estado.meses[mesVisible]={ ingresos:[], categorias:[] }; render(); } };
 document.getElementById("btnPlanificar").onclick=()=>{ planificar(parseInt(document.getElementById("selPlanN").value,10)||3); };
+document.getElementById("btnTraerDe").onclick=()=>{ const k=document.getElementById("selCopiarDe").value; if(k) traerDe(k); };
 
 // Inicio: si dejaste la sesión iniciada en este dispositivo, entra sin pedir contraseña.
 async function arranque(){
