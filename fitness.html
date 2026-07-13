@@ -1,0 +1,1335 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0d9488">
+<title>FitCoach — Tu entrenador de bolsillo</title>
+<style>
+  :root{
+    --teal:#0d9488; --teal-osc:#0f766e; --teal-cl:#ccfbf1; --teal-bd:#5eead4;
+    --indigo:#4f46e5; --indigo-cl:#e0e7ff;
+    --naranja:#ea580c; --naranja-cl:#ffedd5; --naranja-bd:#fdba74;
+    --verde:#16a34a; --verde-cl:#dcfce7;
+    --rojo:#dc2626; --rojo-cl:#fee2e2;
+    --amar:#ca8a04; --amar-cl:#fef9c3;
+    --gris:#64748b; --gris-cl:#f1f5f9; --borde:#e2e8f0;
+    --texto:#0f172a; --sub:#475569; --fondo:#f8fafc; --tarjeta:#ffffff;
+    --sombra:0 1px 3px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.04);
+    --sombra-md:0 4px 12px rgba(0,0,0,.08);
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--fondo); color:var(--texto); line-height:1.45; font-size:15px; padding-bottom:76px;}
+  h1,h2,h3{margin:0;}
+  button{font-family:inherit;}
+  input,select,textarea{font-family:inherit; font-size:15px;}
+
+  /* Header */
+  header{background:linear-gradient(135deg,var(--teal),var(--teal-osc)); color:#fff;
+    padding:14px 18px; display:flex; align-items:center; justify-content:space-between;
+    position:sticky; top:0; z-index:30; box-shadow:var(--sombra-md);}
+  header .logo{font-size:19px; font-weight:800; display:flex; align-items:center; gap:8px;}
+  header .fecha-hoy{font-size:12.5px; opacity:.85; text-transform:capitalize;}
+  .btn-icono{background:rgba(255,255,255,.18); border:none; color:#fff; width:38px; height:38px;
+    border-radius:10px; font-size:17px; cursor:pointer;}
+  .btn-icono:hover{background:rgba(255,255,255,.3);}
+
+  .wrap{max-width:640px; margin:0 auto; padding:16px;}
+
+  /* Tarjetas */
+  .card{background:var(--tarjeta); border-radius:16px; box-shadow:var(--sombra); padding:16px; margin-bottom:14px;}
+  .card h3{font-size:15px; margin-bottom:12px; display:flex; align-items:center; gap:7px;}
+  .card h3 .em{font-size:17px;}
+  .muted{color:var(--sub); font-size:13px;}
+
+  /* Anillo de calorías */
+  .anillo-wrap{display:flex; align-items:center; gap:18px; justify-content:center; flex-wrap:wrap;}
+  .anillo{position:relative; width:170px; height:170px; flex-shrink:0;}
+  .anillo svg{transform:rotate(-90deg);}
+  .anillo .centro{position:absolute; inset:0; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; text-align:center;}
+  .anillo .centro .grande{font-size:32px; font-weight:800; line-height:1;}
+  .anillo .centro .chico{font-size:12px; color:var(--sub); margin-top:3px;}
+  .anillo .centro .rest{font-size:12.5px; font-weight:700; margin-top:5px;}
+  .mini-stats{display:flex; flex-direction:column; gap:10px; min-width:150px;}
+  .mini{display:flex; align-items:center; gap:9px; font-size:13.5px;}
+  .mini .dot{width:11px; height:11px; border-radius:3px; flex-shrink:0;}
+  .mini b{margin-left:auto; font-variant-numeric:tabular-nums;}
+
+  /* Macros barras */
+  .macros{display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-top:14px;}
+  .macro{background:var(--gris-cl); border-radius:12px; padding:10px; text-align:center;}
+  .macro .lbl{font-size:11.5px; color:var(--sub); font-weight:600; text-transform:uppercase; letter-spacing:.03em;}
+  .macro .val{font-size:17px; font-weight:800; margin:2px 0;}
+  .macro .bar{height:6px; border-radius:4px; background:#fff; overflow:hidden; margin-top:6px;}
+  .macro .bar > div{height:100%; border-radius:4px; transition:.3s;}
+  .macro .meta-txt{font-size:10.5px; color:var(--sub); margin-top:4px;}
+
+  /* Semáforo */
+  .semaforo{display:flex; align-items:center; gap:12px; padding:12px 14px; border-radius:12px; margin-top:4px;}
+  .semaforo .ico{font-size:26px;}
+  .semaforo .txt{font-size:13.5px; font-weight:600;}
+  .sem-ok{background:var(--verde-cl); color:#14532d;}
+  .sem-warn{background:var(--amar-cl); color:#713f12;}
+  .sem-bad{background:var(--rojo-cl); color:#7f1d1d;}
+  .sem-info{background:var(--teal-cl); color:#134e4a;}
+
+  /* Botones */
+  .btn{border:none; border-radius:11px; padding:11px 16px; font-size:15px; font-weight:700;
+    cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap:7px;}
+  .btn-primary{background:var(--teal); color:#fff;} .btn-primary:hover{background:var(--teal-osc);}
+  .btn-naranja{background:var(--naranja); color:#fff;} .btn-naranja:hover{background:#c2410c;}
+  .btn-indigo{background:var(--indigo); color:#fff;} .btn-indigo:hover{background:#4338ca;}
+  .btn-ghost{background:var(--gris-cl); color:var(--texto);} .btn-ghost:hover{background:#e2e8f0;}
+  .btn-block{width:100%;}
+  .btn-sm{padding:7px 12px; font-size:13px; border-radius:9px;}
+  .btn-danger{background:var(--rojo-cl); color:var(--rojo);}
+
+  /* Inputs */
+  .campo{margin-bottom:13px;}
+  .campo label{display:block; font-size:12.5px; color:var(--sub); font-weight:700; margin-bottom:5px;}
+  .campo input,.campo select,.campo textarea{width:100%; padding:11px 12px; border:1.5px solid var(--borde);
+    border-radius:11px; background:#fff; color:var(--texto);}
+  .campo input:focus,.campo select:focus,.campo textarea:focus{outline:none; border-color:var(--teal); box-shadow:0 0 0 3px var(--teal-cl);}
+  .fila{display:flex; gap:10px;} .fila > *{flex:1;}
+
+  /* Chips selección */
+  .chips{display:flex; flex-wrap:wrap; gap:8px;}
+  .chip{border:1.5px solid var(--borde); background:#fff; border-radius:11px; padding:10px 13px;
+    font-size:13.5px; cursor:pointer; font-weight:600; color:var(--sub); flex:1; text-align:center; min-width:90px;}
+  .chip.sel{border-color:var(--teal); background:var(--teal-cl); color:var(--teal-osc);}
+  .chip small{display:block; font-weight:500; font-size:11px; opacity:.85; margin-top:2px;}
+
+  /* Listas de registros */
+  .item{display:flex; align-items:center; gap:12px; padding:11px 0; border-bottom:1px solid var(--borde);}
+  .item:last-child{border-bottom:none;}
+  .item .ico{width:38px; height:38px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0;}
+  .item .info{flex:1; min-width:0;}
+  .item .info .n{font-weight:700; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .item .info .s{font-size:12px; color:var(--sub);}
+  .item .val{font-weight:800; font-variant-numeric:tabular-nums; text-align:right; font-size:14px;}
+  .item .del{background:none; border:none; color:var(--rojo); cursor:pointer; font-size:16px; padding:4px;}
+
+  .grupo-comida{margin-bottom:8px;}
+  .grupo-comida .cab{display:flex; align-items:center; gap:8px; font-size:13px; font-weight:800; color:var(--sub);
+    text-transform:uppercase; letter-spacing:.04em; margin:14px 0 4px; padding-top:6px;}
+  .grupo-comida .cab .kc{margin-left:auto; color:var(--teal-osc);}
+
+  /* Tabs inferiores */
+  nav.tabs{position:fixed; bottom:0; left:0; right:0; background:#fff; border-top:1px solid var(--borde);
+    display:flex; z-index:30; box-shadow:0 -2px 10px rgba(0,0,0,.05); padding-bottom:env(safe-area-inset-bottom);}
+  nav.tabs button{flex:1; background:none; border:none; padding:9px 2px 8px; cursor:pointer; color:var(--gris);
+    display:flex; flex-direction:column; align-items:center; gap:2px; font-size:10.5px; font-weight:600;}
+  nav.tabs button .i{font-size:20px;}
+  nav.tabs button.act{color:var(--teal);}
+
+  .pantalla{display:none;} .pantalla.act{display:block;}
+  .tit-pantalla{font-size:22px; font-weight:800; margin-bottom:3px;}
+  .sub-pantalla{color:var(--sub); font-size:13.5px; margin-bottom:16px;}
+
+  /* Grid de números */
+  .kpis{display:grid; grid-template-columns:repeat(2,1fr); gap:10px;}
+  .kpi{background:var(--gris-cl); border-radius:12px; padding:12px;}
+  .kpi .l{font-size:11.5px; color:var(--sub); font-weight:700;}
+  .kpi .v{font-size:22px; font-weight:800; margin-top:2px; font-variant-numeric:tabular-nums;}
+  .kpi .u{font-size:12px; color:var(--sub); font-weight:600;}
+
+  /* Modal */
+  .modal-bg{position:fixed; inset:0; background:rgba(15,23,42,.5); z-index:50; display:none;
+    align-items:flex-end; justify-content:center;}
+  .modal-bg.abierto{display:flex;}
+  .modal{background:#fff; width:100%; max-width:640px; border-radius:22px 22px 0 0; padding:20px;
+    max-height:90vh; overflow-y:auto; animation:subir .25s ease;}
+  @keyframes subir{from{transform:translateY(30px); opacity:.5;} to{transform:none; opacity:1;}}
+  .modal .barra{width:40px; height:4px; background:var(--borde); border-radius:3px; margin:0 auto 14px;}
+  .modal h3{font-size:18px; margin-bottom:14px;}
+
+  /* Buscador alimentos */
+  .resultados{max-height:230px; overflow-y:auto; margin-top:6px;}
+  .res-item{display:flex; align-items:center; gap:10px; padding:10px; border-radius:10px; cursor:pointer;}
+  .res-item:hover{background:var(--teal-cl);}
+  .res-item .info{flex:1;}
+  .res-item .info .n{font-weight:600; font-size:14px;}
+  .res-item .info .s{font-size:12px; color:var(--sub);}
+
+  /* Progreso plan */
+  .barra-prog{height:12px; background:var(--gris-cl); border-radius:8px; overflow:hidden;}
+  .barra-prog > div{height:100%; background:linear-gradient(90deg,var(--teal),var(--verde)); border-radius:8px; transition:.4s;}
+  .racha{display:flex; align-items:center; gap:14px; background:linear-gradient(135deg,var(--naranja),#f97316);
+    color:#fff; border-radius:16px; padding:16px;}
+  .racha .fuego{font-size:40px;}
+  .racha .n{font-size:30px; font-weight:800; line-height:1;}
+  .racha .l{font-size:13px; opacity:.9;}
+  .cal-grid{display:grid; grid-template-columns:repeat(7,1fr); gap:5px; margin-top:12px;}
+  .cal-dia{aspect-ratio:1; border-radius:7px; display:flex; align-items:center; justify-content:center;
+    font-size:11px; font-weight:700; background:var(--gris-cl); color:var(--sub);}
+  .cal-dia.ok{background:var(--verde); color:#fff;}
+  .cal-dia.no{background:var(--rojo-cl); color:var(--rojo);}
+  .cal-dia.hoy{outline:2.5px solid var(--teal); outline-offset:1px;}
+
+  canvas{width:100%; display:block;}
+
+  /* Onboarding */
+  .onb{position:fixed; inset:0; z-index:100; background:linear-gradient(160deg,var(--teal),var(--teal-osc));
+    display:flex; align-items:center; justify-content:center; padding:16px; overflow-y:auto;}
+  .onb.oculto{display:none;}
+  .onb-card{background:#fff; border-radius:22px; width:100%; max-width:480px; padding:24px; margin:auto;
+    box-shadow:0 20px 60px rgba(0,0,0,.35);}
+  .onb-prog{display:flex; gap:5px; margin-bottom:18px;}
+  .onb-prog > div{flex:1; height:5px; border-radius:3px; background:var(--borde);}
+  .onb-prog > div.on{background:var(--teal);}
+  .onb-card h2{font-size:21px; margin-bottom:5px;}
+  .onb-card .paso-sub{color:var(--sub); font-size:13.5px; margin-bottom:18px;}
+  .onb-nav{display:flex; gap:10px; margin-top:8px;}
+  .onb-emoji{font-size:44px; text-align:center; margin-bottom:6px;}
+
+  .pill{display:inline-block; padding:3px 10px; border-radius:20px; font-size:11.5px; font-weight:700;}
+  .pill-teal{background:var(--teal-cl); color:var(--teal-osc);}
+  .pill-naranja{background:var(--naranja-cl); color:var(--naranja);}
+  .divider{height:1px; background:var(--borde); margin:14px 0;}
+  .vacio{text-align:center; color:var(--sub); padding:26px 10px; font-size:13.5px;}
+  .vacio .em{font-size:34px; display:block; margin-bottom:8px;}
+
+  .toast{position:fixed; bottom:90px; left:50%; transform:translateX(-50%); background:var(--texto);
+    color:#fff; padding:11px 18px; border-radius:12px; font-size:13.5px; font-weight:600; z-index:200;
+    opacity:0; transition:.3s; pointer-events:none; box-shadow:var(--sombra-md);}
+  .toast.show{opacity:1; transform:translateX(-50%) translateY(-6px);}
+</style>
+</head>
+<body>
+
+<!-- ══════════ ONBOARDING ══════════ -->
+<div class="onb" id="onb">
+  <div class="onb-card">
+    <div class="onb-prog" id="onbProg"></div>
+    <div id="onbPaso"></div>
+    <div class="onb-nav">
+      <button class="btn btn-ghost" id="onbAtras" style="display:none;">← Atrás</button>
+      <button class="btn btn-primary btn-block" id="onbSig">Siguiente →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ APP ══════════ -->
+<div id="app" style="display:none;">
+  <header>
+    <div>
+      <div class="logo">💪 FitCoach</div>
+      <div class="fecha-hoy" id="fechaHoy"></div>
+    </div>
+    <button class="btn-icono" id="btnMenu" title="Menú">⚙️</button>
+  </header>
+
+  <div class="wrap">
+    <!-- HOY -->
+    <section class="pantalla act" id="p-hoy"></section>
+    <!-- COMIDAS -->
+    <section class="pantalla" id="p-comidas"></section>
+    <!-- ACTIVIDAD -->
+    <section class="pantalla" id="p-actividad"></section>
+    <!-- PESO -->
+    <section class="pantalla" id="p-peso"></section>
+    <!-- MEDIDAS -->
+    <section class="pantalla" id="p-medidas"></section>
+    <!-- PLAN -->
+    <section class="pantalla" id="p-plan"></section>
+  </div>
+
+  <nav class="tabs" id="tabs">
+    <button data-p="hoy" class="act"><span class="i">🏠</span>Hoy</button>
+    <button data-p="comidas"><span class="i">🍽️</span>Comidas</button>
+    <button data-p="actividad"><span class="i">🏃</span>Actividad</button>
+    <button data-p="peso"><span class="i">⚖️</span>Peso</button>
+    <button data-p="medidas"><span class="i">📏</span>Medidas</button>
+    <button data-p="plan"><span class="i">🎯</span>Plan</button>
+  </nav>
+</div>
+
+<!-- Modal genérico -->
+<div class="modal-bg" id="modalBg">
+  <div class="modal" id="modal">
+    <div class="barra"></div>
+    <div id="modalContenido"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+/* ══════════════════════════════════════════════════════════════
+   FitCoach — Tu entrenador de bolsillo
+   App 100% local (localStorage), sin servidor. Datos privados.
+   ══════════════════════════════════════════════════════════════ */
+
+/* ---------- Utilidades ---------- */
+const $ = s => document.querySelector(s);
+const hoyISO = () => new Date().toISOString().slice(0,10);
+const fmt = (n,d=0) => Number(n).toLocaleString('es', {maximumFractionDigits:d, minimumFractionDigits:d});
+const clamp = (n,a,b) => Math.max(a, Math.min(b,n));
+function toast(msg){ const t=$('#toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),1900); }
+function nombreDia(iso){ return new Date(iso+'T12:00').toLocaleDateString('es',{weekday:'long', day:'numeric', month:'long'}); }
+function diasEntre(a,b){ return Math.round((new Date(b)-new Date(a))/86400000); }
+
+/* ---------- Persistencia ---------- */
+const DB = {
+  get(k, def){ try{ const v=localStorage.getItem('fit_'+k); return v?JSON.parse(v):def; }catch(e){ return def; } },
+  set(k, v){ localStorage.setItem('fit_'+k, JSON.stringify(v)); },
+  del(k){ localStorage.removeItem('fit_'+k); }
+};
+
+let estado = {
+  perfil: DB.get('perfil', null),
+  comidas: DB.get('comidas', []),        // {id,fecha,tipo,nombre,gramos,kcal,prot,carb,grasa}
+  frecuentes: DB.get('frecuentes', []),  // {id,nombre,kcal,prot,carb,grasa,base:'porcion'|'100g'}
+  actividad: DB.get('actividad', []),    // {id,fecha,nombre,minutos,kcal}
+  peso: DB.get('peso', []),              // {fecha,kg}
+  medidas: DB.get('medidas', []),        // {fecha,...cm}
+  cumplidos: DB.get('cumplidos', {}),    // {fecha:true/false}
+};
+function guardar(k){ DB.set(k, estado[k]); }
+
+/* ---------- Base de alimentos (por 100 g salvo indicado) ---------- */
+/* k=kcal, p=proteína, c=carbohidrato, g=grasa (en 100 g) */
+const ALIMENTOS = [
+  {n:"Pechuga de pollo (cocida)", k:165, p:31, c:0, g:3.6, e:"🍗"},
+  {n:"Muslo de pollo (cocido)", k:209, p:26, c:0, g:11, e:"🍗"},
+  {n:"Carne de res magra", k:187, p:26, c:0, g:9, e:"🥩"},
+  {n:"Carne molida 90/10", k:176, p:20, c:0, g:10, e:"🥩"},
+  {n:"Cerdo lomo", k:143, p:26, c:0, g:4, e:"🥓"},
+  {n:"Pescado (tilapia/merluza)", k:96, p:20, c:0, g:1.7, e:"🐟"},
+  {n:"Salmón", k:208, p:20, c:0, g:13, e:"🐟"},
+  {n:"Atún en agua", k:116, p:26, c:0, g:1, e:"🐟"},
+  {n:"Huevo entero", k:143, p:13, c:1.1, g:9.5, e:"🥚"},
+  {n:"Clara de huevo", k:52, p:11, c:0.7, g:0.2, e:"🥚"},
+  {n:"Leche entera", k:61, p:3.2, c:4.8, g:3.3, e:"🥛"},
+  {n:"Leche descremada", k:35, p:3.4, c:5, g:0.1, e:"🥛"},
+  {n:"Yogur griego natural", k:59, p:10, c:3.6, g:0.4, e:"🥛"},
+  {n:"Queso fresco", k:264, p:18, c:3, g:20, e:"🧀"},
+  {n:"Queso cheddar", k:402, p:25, c:1.3, g:33, e:"🧀"},
+  {n:"Arroz blanco (cocido)", k:130, p:2.7, c:28, g:0.3, e:"🍚"},
+  {n:"Arroz integral (cocido)", k:112, p:2.6, c:24, g:0.9, e:"🍚"},
+  {n:"Avena (seca)", k:389, p:17, c:66, g:7, e:"🥣"},
+  {n:"Pan integral", k:247, p:13, c:41, g:3.4, e:"🍞"},
+  {n:"Pan blanco", k:265, p:9, c:49, g:3.2, e:"🍞"},
+  {n:"Pasta (cocida)", k:158, p:6, c:31, g:0.9, e:"🍝"},
+  {n:"Papa (cocida)", k:87, p:2, c:20, g:0.1, e:"🥔"},
+  {n:"Camote/batata", k:86, p:1.6, c:20, g:0.1, e:"🍠"},
+  {n:"Quinua (cocida)", k:120, p:4.4, c:21, g:1.9, e:"🌾"},
+  {n:"Lentejas (cocidas)", k:116, p:9, c:20, g:0.4, e:"🫘"},
+  {n:"Frijoles (cocidos)", k:127, p:9, c:23, g:0.5, e:"🫘"},
+  {n:"Garbanzos (cocidos)", k:164, p:9, c:27, g:2.6, e:"🫘"},
+  {n:"Plátano/banana", k:89, p:1.1, c:23, g:0.3, e:"🍌"},
+  {n:"Manzana", k:52, p:0.3, c:14, g:0.2, e:"🍎"},
+  {n:"Naranja", k:47, p:0.9, c:12, g:0.1, e:"🍊"},
+  {n:"Fresas", k:32, p:0.7, c:8, g:0.3, e:"🍓"},
+  {n:"Palta/aguacate", k:160, p:2, c:9, g:15, e:"🥑"},
+  {n:"Tomate", k:18, p:0.9, c:3.9, g:0.2, e:"🍅"},
+  {n:"Brócoli", k:34, p:2.8, c:7, g:0.4, e:"🥦"},
+  {n:"Lechuga/espinaca", k:20, p:2, c:3, g:0.3, e:"🥬"},
+  {n:"Zanahoria", k:41, p:0.9, c:10, g:0.2, e:"🥕"},
+  {n:"Aceite de oliva", k:884, p:0, c:0, g:100, e:"🫒"},
+  {n:"Mantequilla de maní", k:588, p:25, c:20, g:50, e:"🥜"},
+  {n:"Almendras", k:579, p:21, c:22, g:50, e:"🥜"},
+  {n:"Nueces", k:654, p:15, c:14, g:65, e:"🥜"},
+  {n:"Proteína en polvo (1 scoop 30g)", k:120, p:24, c:3, g:1.5, e:"🥤", porcion:30},
+  {n:"Chocolate/dulce", k:535, p:8, c:59, g:30, e:"🍫"},
+  {n:"Gaseosa/refresco", k:42, p:0, c:11, g:0, e:"🥤"},
+  {n:"Cerveza", k:43, p:0.5, c:3.6, g:0, e:"🍺"},
+];
+
+const ACTIVIDADES = [
+  {n:"Caminar (ligero)", met:3.0, e:"🚶"},
+  {n:"Caminar (rápido)", met:4.3, e:"🚶"},
+  {n:"Trotar", met:7.0, e:"🏃"},
+  {n:"Correr", met:9.8, e:"🏃"},
+  {n:"Bicicleta (moderado)", met:6.8, e:"🚴"},
+  {n:"Bicicleta (intenso)", met:10, e:"🚴"},
+  {n:"Pesas / fuerza (moderado)", met:3.5, e:"🏋️"},
+  {n:"Pesas / fuerza (intenso)", met:6.0, e:"🏋️"},
+  {n:"Natación", met:7.0, e:"🏊"},
+  {n:"HIIT / funcional", met:8.0, e:"🤸"},
+  {n:"Yoga / estiramiento", met:2.5, e:"🧘"},
+  {n:"Fútbol / deporte", met:7.0, e:"⚽"},
+  {n:"Elíptica", met:5.0, e:"🏃"},
+  {n:"Baile / zumba", met:6.5, e:"💃"},
+  {n:"Saltar cuerda", met:11, e:"🪢"},
+  {n:"Escaladora / stair", met:8.0, e:"🧗"},
+];
+
+const NIVELES = [
+  {id:"sed", f:1.2, n:"Sedentario", d:"Trabajo sentado, poco movimiento"},
+  {id:"lig", f:1.375, n:"Ligero", d:"De pie a ratos, caminas algo"},
+  {id:"act", f:1.55, n:"Activo", d:"Mucho de pie / caminas bastante"},
+  {id:"muy", f:1.725, n:"Muy activo", d:"Trabajo físico o muy movido"},
+];
+
+const TIPOS_COMIDA = [
+  {id:"desayuno", n:"Desayuno", e:"🌅"},
+  {id:"almuerzo", n:"Almuerzo", e:"☀️"},
+  {id:"cena", n:"Cena", e:"🌙"},
+  {id:"snack", n:"Snacks", e:"🍎"},
+];
+
+/* ══════════════════════════════════════════════════════════════
+   CÁLCULOS (motor científico)
+   ══════════════════════════════════════════════════════════════ */
+function calcMetricas(p){
+  if(!p) return null;
+  const kg = pesoActual();
+  // TMB — Mifflin-St Jeor
+  let tmb = 10*kg + 6.25*p.altura - 5*p.edad + (p.sexo==='h' ? 5 : -161);
+  tmb = Math.round(tmb);
+  const nivel = NIVELES.find(n=>n.id===p.nivel) || NIVELES[0];
+  const neat = Math.round(tmb*(nivel.f-1));      // gasto por actividad diaria (sin ejercicio)
+  const tdeeBase = Math.round(tmb*nivel.f);       // mantenimiento sin ejercicio estructurado
+  // Ajuste según objetivo y ritmo
+  let ajuste = 0;
+  if(p.objetivo==='perder'){
+    ajuste = -({suave:300, moderado:500, agresivo:700}[p.ritmo] || 500);
+  } else if(p.objetivo==='ganar'){
+    ajuste = ({suave:200, moderado:300, agresivo:450}[p.ritmo] || 300);
+  } else { // recomp
+    ajuste = -200; // déficit leve + proteína alta
+  }
+  const metaKcal = Math.max(1200, Math.round(tdeeBase + ajuste));
+  // Macros
+  const gProtKg = p.objetivo==='ganar' ? 1.8 : 2.0;
+  const prot = Math.round(kg*gProtKg);
+  const grasa = Math.round(kg*0.8);
+  const kcalRest = metaKcal - (prot*4 + grasa*9);
+  const carb = Math.max(0, Math.round(kcalRest/4));
+  // Cambio de peso semanal estimado (7700 kcal ≈ 1 kg)
+  const cambioSemKg = +(ajuste*7/7700).toFixed(2);
+  return { tmb, neat, tdeeBase, ajuste, metaKcal, prot, grasa, carb, cambioSemKg, nivel, kg };
+}
+
+function pesoActual(){
+  if(estado.peso.length){
+    const ord = [...estado.peso].sort((a,b)=>a.fecha<b.fecha?1:-1);
+    return ord[0].kg;
+  }
+  return estado.perfil ? estado.perfil.pesoInicial : 70;
+}
+
+/* Totales de un día */
+function totalesDia(fecha){
+  const c = estado.comidas.filter(x=>x.fecha===fecha);
+  const kcal = c.reduce((s,x)=>s+x.kcal,0);
+  const prot = c.reduce((s,x)=>s+(x.prot||0),0);
+  const carb = c.reduce((s,x)=>s+(x.carb||0),0);
+  const grasa = c.reduce((s,x)=>s+(x.grasa||0),0);
+  const ejercicio = estado.actividad.filter(x=>x.fecha===fecha).reduce((s,x)=>s+x.kcal,0);
+  return { kcal:Math.round(kcal), prot:Math.round(prot), carb:Math.round(carb), grasa:Math.round(grasa), ejercicio:Math.round(ejercicio) };
+}
+
+/* ══════════════════════════════════════════════════════════════
+   ONBOARDING
+   ══════════════════════════════════════════════════════════════ */
+let onbDatos = { sexo:null, edad:null, altura:null, pesoInicial:null, pesoMeta:null,
+  objetivo:null, nivel:null, ritmo:null, comidasDia:3, nombre:'' };
+let onbIdx = 0;
+const PASOS = [
+  { // 0 bienvenida
+    render:()=>`<div class="onb-emoji">💪</div>
+      <h2>Bienvenido a FitCoach</h2>
+      <p class="paso-sub">Tu entrenador y nutriólogo de bolsillo. Te haré unas preguntas para armar tu <b>perfil</b> y un <b>plan real y factible</b>. Toma 1 minuto.</p>
+      <div class="campo"><label>¿Cómo te llamas?</label>
+        <input id="i_nombre" placeholder="Tu nombre" value="${onbDatos.nombre}"></div>`,
+    guardar:()=>{ onbDatos.nombre = $('#i_nombre').value.trim(); return true; }
+  },
+  { // 1 sexo/edad
+    render:()=>`<div class="onb-emoji">🧬</div><h2>Sobre ti</h2>
+      <p class="paso-sub">Esto define tu metabolismo basal.</p>
+      <div class="campo"><label>Sexo biológico</label>
+        <div class="chips" id="c_sexo">
+          <div class="chip ${onbDatos.sexo==='h'?'sel':''}" data-v="h">👨 Hombre</div>
+          <div class="chip ${onbDatos.sexo==='m'?'sel':''}" data-v="m">👩 Mujer</div>
+        </div></div>
+      <div class="fila">
+        <div class="campo"><label>Edad</label><input id="i_edad" type="number" inputmode="numeric" placeholder="años" value="${onbDatos.edad||''}"></div>
+        <div class="campo"><label>Altura (cm)</label><input id="i_altura" type="number" inputmode="numeric" placeholder="cm" value="${onbDatos.altura||''}"></div>
+      </div>`,
+    init:()=>chipSelect('#c_sexo', v=>onbDatos.sexo=v),
+    guardar:()=>{ onbDatos.edad=+$('#i_edad').value; onbDatos.altura=+$('#i_altura').value;
+      if(!onbDatos.sexo||!onbDatos.edad||!onbDatos.altura){ toast('Completa todos los campos'); return false; } return true; }
+  },
+  { // 2 pesos
+    render:()=>`<div class="onb-emoji">⚖️</div><h2>Tu peso</h2>
+      <p class="paso-sub">Actual y a dónde quieres llegar.</p>
+      <div class="fila">
+        <div class="campo"><label>Peso actual (kg)</label><input id="i_peso" type="number" inputmode="decimal" step="0.1" placeholder="kg" value="${onbDatos.pesoInicial||''}"></div>
+        <div class="campo"><label>Peso meta (kg)</label><input id="i_pmeta" type="number" inputmode="decimal" step="0.1" placeholder="kg" value="${onbDatos.pesoMeta||''}"></div>
+      </div>`,
+    guardar:()=>{ onbDatos.pesoInicial=+$('#i_peso').value; onbDatos.pesoMeta=+$('#i_pmeta').value;
+      if(!onbDatos.pesoInicial||!onbDatos.pesoMeta){ toast('Ingresa ambos pesos'); return false; } return true; }
+  },
+  { // 3 objetivo
+    render:()=>`<div class="onb-emoji">🎯</div><h2>Tu objetivo principal</h2>
+      <p class="paso-sub">¿Qué buscas lograr?</p>
+      <div class="chips" style="flex-direction:column;" id="c_obj">
+        <div class="chip ${onbDatos.objetivo==='perder'?'sel':''}" data-v="perder">🔥 Perder grasa<small>Bajar de peso quemando grasa</small></div>
+        <div class="chip ${onbDatos.objetivo==='recomp'?'sel':''}" data-v="recomp">♻️ Recomposición<small>Perder grasa y ganar músculo a la vez</small></div>
+        <div class="chip ${onbDatos.objetivo==='ganar'?'sel':''}" data-v="ganar">💪 Ganar músculo<small>Aumentar masa muscular</small></div>
+      </div>`,
+    init:()=>chipSelect('#c_obj', v=>onbDatos.objetivo=v),
+    guardar:()=>{ if(!onbDatos.objetivo){ toast('Elige un objetivo'); return false; } return true; }
+  },
+  { // 4 nivel actividad (NEAT)
+    render:()=>`<div class="onb-emoji">🚶</div><h2>Tu día a día</h2>
+      <p class="paso-sub">Sin contar el ejercicio: ¿qué tan activo es tu día normal? (esto es tu <b>NEAT</b>)</p>
+      <div class="chips" style="flex-direction:column;" id="c_niv">
+        ${NIVELES.map(n=>`<div class="chip ${onbDatos.nivel===n.id?'sel':''}" data-v="${n.id}">${n.n}<small>${n.d}</small></div>`).join('')}
+      </div>`,
+    init:()=>chipSelect('#c_niv', v=>onbDatos.nivel=v),
+    guardar:()=>{ if(!onbDatos.nivel){ toast('Elige tu nivel'); return false; } return true; }
+  },
+  { // 5 ritmo
+    render:()=>`<div class="onb-emoji">📈</div><h2>Ritmo de cambio</h2>
+      <p class="paso-sub">Lo sostenible funciona mejor a largo plazo. Recomiendo <b>Moderado</b>.</p>
+      <div class="chips" style="flex-direction:column;" id="c_rit">
+        <div class="chip ${onbDatos.ritmo==='suave'?'sel':''}" data-v="suave">🐢 Suave<small>~0.25 kg/semana · más fácil de mantener</small></div>
+        <div class="chip ${onbDatos.ritmo==='moderado'?'sel':''}" data-v="moderado">⚡ Moderado<small>~0.45 kg/semana · equilibrio ideal</small></div>
+        <div class="chip ${onbDatos.ritmo==='agresivo'?'sel':''}" data-v="agresivo">🔥 Agresivo<small>~0.65 kg/semana · exige más disciplina</small></div>
+      </div>`,
+    init:()=>chipSelect('#c_rit', v=>onbDatos.ritmo=v),
+    guardar:()=>{ if(!onbDatos.ritmo){ toast('Elige un ritmo'); return false; } return true; }
+  },
+  { // 6 hábitos
+    render:()=>`<div class="onb-emoji">🍽️</div><h2>Tus comidas</h2>
+      <p class="paso-sub">¿Cuántas comidas sueles hacer al día?</p>
+      <div class="chips" id="c_com">
+        ${[2,3,4,5].map(n=>`<div class="chip ${onbDatos.comidasDia===n?'sel':''}" data-v="${n}">${n}</div>`).join('')}
+      </div>`,
+    init:()=>chipSelect('#c_com', v=>onbDatos.comidasDia=+v),
+    guardar:()=>true
+  },
+  { // 7 resumen
+    render:()=>{
+      const prev = calcPreview();
+      return `<div class="onb-emoji">✅</div><h2>Tu plan está listo</h2>
+      <p class="paso-sub">Esto calculé para ti, ${onbDatos.nombre||'crack'}:</p>
+      <div class="kpis" style="margin-bottom:12px;">
+        <div class="kpi"><div class="l">🔥 Meta diaria</div><div class="v">${fmt(prev.metaKcal)}</div><div class="u">kcal/día</div></div>
+        <div class="kpi"><div class="l">⚙️ Metabolismo basal</div><div class="v">${fmt(prev.tmb)}</div><div class="u">kcal (reposo)</div></div>
+        <div class="kpi"><div class="l">💪 Proteína</div><div class="v">${fmt(prev.prot)}</div><div class="u">g/día</div></div>
+        <div class="kpi"><div class="l">📊 Gasto total</div><div class="v">${fmt(prev.tdeeBase)}</div><div class="u">kcal/día</div></div>
+      </div>
+      <div class="semaforo sem-info"><span class="ico">🎯</span><span class="txt">
+        A este ritmo cambiarías <b>${fmt(Math.abs(prev.cambioSemKg),2)} kg/semana</b>. ${prev.mensaje}</span></div>`;
+    },
+    guardar:()=>true, ultimo:true
+  }
+];
+
+function calcPreview(){
+  const p = { ...onbDatos, nivel:onbDatos.nivel };
+  const kg = onbDatos.pesoInicial;
+  let tmb = Math.round(10*kg + 6.25*onbDatos.altura - 5*onbDatos.edad + (onbDatos.sexo==='h'?5:-161));
+  const nivel = NIVELES.find(n=>n.id===onbDatos.nivel)||NIVELES[0];
+  const tdeeBase = Math.round(tmb*nivel.f);
+  let ajuste = onbDatos.objetivo==='perder' ? -({suave:300,moderado:500,agresivo:700}[onbDatos.ritmo])
+    : onbDatos.objetivo==='ganar' ? ({suave:200,moderado:300,agresivo:450}[onbDatos.ritmo]) : -200;
+  const metaKcal = Math.max(1200, Math.round(tdeeBase+ajuste));
+  const prot = Math.round(kg*(onbDatos.objetivo==='ganar'?1.8:2.0));
+  const cambioSemKg = +(ajuste*7/7700).toFixed(2);
+  const dif = Math.abs(onbDatos.pesoInicial - onbDatos.pesoMeta);
+  const semanas = cambioSemKg? Math.ceil(dif/Math.abs(cambioSemKg)) : 0;
+  const mensaje = semanas ? `Llegarías a tu meta en ~<b>${semanas} semanas</b>.` : '';
+  return { tmb, tdeeBase, metaKcal, prot, cambioSemKg, mensaje };
+}
+
+function chipSelect(sel, cb){
+  const cont = $(sel);
+  cont.querySelectorAll('.chip').forEach(ch=>{
+    ch.onclick = ()=>{ cont.querySelectorAll('.chip').forEach(c=>c.classList.remove('sel')); ch.classList.add('sel'); cb(ch.dataset.v); };
+  });
+}
+
+function renderOnb(){
+  const prog = $('#onbProg');
+  prog.innerHTML = PASOS.map((_,i)=>`<div class="${i<=onbIdx?'on':''}"></div>`).join('');
+  const paso = PASOS[onbIdx];
+  $('#onbPaso').innerHTML = paso.render();
+  if(paso.init) paso.init();
+  $('#onbAtras').style.display = onbIdx>0 ? 'block' : 'none';
+  $('#onbSig').textContent = paso.ultimo ? '🚀 Empezar' : 'Siguiente →';
+}
+$('#onbSig').onclick = ()=>{
+  const paso = PASOS[onbIdx];
+  if(paso.guardar && !paso.guardar()) return;
+  if(paso.ultimo){ finalizarOnb(); return; }
+  onbIdx++; renderOnb();
+};
+$('#onbAtras').onclick = ()=>{ if(onbIdx>0){ onbIdx--; renderOnb(); } };
+
+function finalizarOnb(){
+  estado.perfil = {
+    nombre:onbDatos.nombre, sexo:onbDatos.sexo, edad:onbDatos.edad, altura:onbDatos.altura,
+    pesoInicial:onbDatos.pesoInicial, pesoMeta:onbDatos.pesoMeta, objetivo:onbDatos.objetivo,
+    nivel:onbDatos.nivel, ritmo:onbDatos.ritmo, comidasDia:onbDatos.comidasDia,
+    creado:hoyISO()
+  };
+  guardar('perfil');
+  // primer registro de peso
+  if(!estado.peso.length){ estado.peso.push({fecha:hoyISO(), kg:onbDatos.pesoInicial}); guardar('peso'); }
+  $('#onb').classList.add('oculto');
+  $('#app').style.display='block';
+  iniciarApp();
+  toast('¡Perfil creado! 🎉');
+}
+
+/* ══════════════════════════════════════════════════════════════
+   NAVEGACIÓN
+   ══════════════════════════════════════════════════════════════ */
+let pantallaActual = 'hoy';
+$('#tabs').querySelectorAll('button').forEach(b=>{
+  b.onclick = ()=>irA(b.dataset.p);
+});
+function irA(p){
+  pantallaActual = p;
+  $('#tabs').querySelectorAll('button').forEach(b=>b.classList.toggle('act', b.dataset.p===p));
+  document.querySelectorAll('.pantalla').forEach(s=>s.classList.remove('act'));
+  $('#p-'+p).classList.add('act');
+  window.scrollTo(0,0);
+  render();
+}
+
+function render(){
+  ({ hoy:renderHoy, comidas:renderComidas, actividad:renderActividad,
+     peso:renderPeso, medidas:renderMedidas, plan:renderPlan }[pantallaActual])();
+}
+
+/* ══════════════════════════════════════════════════════════════
+   PANTALLA: HOY
+   ══════════════════════════════════════════════════════════════ */
+function renderHoy(){
+  const m = calcMetricas(estado.perfil);
+  const t = totalesDia(hoyISO());
+  const metaAjustada = m.metaKcal + t.ejercicio; // puedes "comerte" el ejercicio
+  const restante = metaAjustada - t.kcal;
+  const pct = clamp(t.kcal/metaAjustada, 0, 1.15);
+  const circ = 2*Math.PI*72;
+  const color = t.kcal > metaAjustada*1.05 ? 'var(--rojo)' : t.kcal >= metaAjustada*0.85 ? 'var(--verde)' : 'var(--teal)';
+
+  // Semáforo
+  let sem;
+  if(t.kcal===0) sem = {c:'sem-info', i:'👋', t:`¡Hola ${estado.perfil.nombre||''}! Registra tu primera comida del día.`};
+  else if(estado.perfil.objetivo==='ganar'){
+    sem = restante>200 ? {c:'sem-warn',i:'🍽️',t:`Te faltan ${fmt(restante)} kcal para tu superávit. ¡A comer!`}
+      : {c:'sem-ok',i:'💪',t:'¡Buen aporte calórico para crecer!'};
+  } else {
+    sem = restante<0 ? {c:'sem-bad',i:'⚠️',t:`Te pasaste ${fmt(-restante)} kcal de tu meta.`}
+      : restante<250 ? {c:'sem-ok',i:'✅',t:'¡Vas perfecto! En tu meta del día.'}
+      : {c:'sem-info',i:'🎯',t:`Te quedan ${fmt(restante)} kcal para tu meta.`};
+  }
+
+  const macroBar = (val, meta, color) => `<div class="bar"><div style="width:${clamp(val/meta*100,0,100)}%; background:${color};"></div></div>`;
+
+  $('#p-hoy').innerHTML = `
+    <div class="tit-pantalla">Hoy</div>
+    <div class="sub-pantalla" style="text-transform:capitalize;">${nombreDia(hoyISO())}</div>
+
+    <div class="card">
+      <div class="anillo-wrap">
+        <div class="anillo">
+          <svg width="170" height="170">
+            <circle cx="85" cy="85" r="72" fill="none" stroke="var(--gris-cl)" stroke-width="14"/>
+            <circle cx="85" cy="85" r="72" fill="none" stroke="${color}" stroke-width="14" stroke-linecap="round"
+              stroke-dasharray="${circ}" stroke-dashoffset="${circ*(1-pct)}"/>
+          </svg>
+          <div class="centro">
+            <div class="grande">${fmt(t.kcal)}</div>
+            <div class="chico">de ${fmt(metaAjustada)} kcal</div>
+            <div class="rest" style="color:${restante<0?'var(--rojo)':'var(--teal-osc)'}">${restante>=0?fmt(restante)+' restantes':fmt(-restante)+' de más'}</div>
+          </div>
+        </div>
+        <div class="mini-stats">
+          <div class="mini"><span class="dot" style="background:var(--teal)"></span>Consumido <b>${fmt(t.kcal)}</b></div>
+          <div class="mini"><span class="dot" style="background:var(--naranja)"></span>Ejercicio <b>+${fmt(t.ejercicio)}</b></div>
+          <div class="mini"><span class="dot" style="background:var(--gris)"></span>Meta base <b>${fmt(m.metaKcal)}</b></div>
+          <div class="mini"><span class="dot" style="background:var(--indigo)"></span>Gasto total <b>${fmt(m.tdeeBase+t.ejercicio)}</b></div>
+        </div>
+      </div>
+
+      <div class="macros">
+        <div class="macro"><div class="lbl">Proteína</div><div class="val">${fmt(t.prot)}<span style="font-size:12px;color:var(--sub)">/${fmt(m.prot)}g</span></div>${macroBar(t.prot,m.prot,'var(--indigo)')}<div class="meta-txt">${t.prot>=m.prot?'✅ cumplida':'clave para músculo'}</div></div>
+        <div class="macro"><div class="lbl">Carbos</div><div class="val">${fmt(t.carb)}<span style="font-size:12px;color:var(--sub)">/${fmt(m.carb)}g</span></div>${macroBar(t.carb,m.carb,'var(--teal)')}<div class="meta-txt">energía</div></div>
+        <div class="macro"><div class="lbl">Grasas</div><div class="val">${fmt(t.grasa)}<span style="font-size:12px;color:var(--sub)">/${fmt(m.grasa)}g</span></div>${macroBar(t.grasa,m.grasa,'var(--naranja)')}<div class="meta-txt">hormonas</div></div>
+      </div>
+    </div>
+
+    <div class="card" style="padding:0; overflow:hidden;">
+      <div class="semaforo ${sem.c}" style="border-radius:0; margin:0;"><span class="ico">${sem.i}</span><span class="txt">${sem.t}</span></div>
+    </div>
+
+    <div class="fila" style="margin-bottom:14px;">
+      <button class="btn btn-primary" onclick="irA('comidas'); setTimeout(abrirAgregarComida,50)">🍽️ Comida</button>
+      <button class="btn btn-naranja" onclick="irA('actividad'); setTimeout(abrirAgregarActividad,50)">🏃 Actividad</button>
+    </div>
+
+    <div class="card">
+      <h3><span class="em">📅</span> Resumen del día</h3>
+      <div class="kpis">
+        <div class="kpi"><div class="l">🍽️ Comidas registradas</div><div class="v">${estado.comidas.filter(c=>c.fecha===hoyISO()).length}</div></div>
+        <div class="kpi"><div class="l">🏃 Ejercicio</div><div class="v">${fmt(t.ejercicio)}<span class="u"> kcal</span></div></div>
+        <div class="kpi"><div class="l">⚖️ Peso actual</div><div class="v">${fmt(pesoActual(),1)}<span class="u"> kg</span></div></div>
+        <div class="kpi"><div class="l">🎯 Meta</div><div class="v">${fmt(estado.perfil.pesoMeta,1)}<span class="u"> kg</span></div></div>
+      </div>
+    </div>`;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   PANTALLA: COMIDAS
+   ══════════════════════════════════════════════════════════════ */
+function renderComidas(){
+  const c = estado.comidas.filter(x=>x.fecha===hoyISO());
+  const t = totalesDia(hoyISO());
+  let html = `
+    <div class="tit-pantalla">Comidas</div>
+    <div class="sub-pantalla">Registra lo que comes hoy · ${fmt(t.kcal)} kcal · ${fmt(t.prot)}g prot</div>
+    <button class="btn btn-primary btn-block" onclick="abrirAgregarComida()" style="margin-bottom:14px;">➕ Agregar comida</button>
+    <div class="card">`;
+  TIPOS_COMIDA.forEach(tc=>{
+    const items = c.filter(x=>x.tipo===tc.id);
+    const sub = items.reduce((s,x)=>s+x.kcal,0);
+    html += `<div class="grupo-comida"><div class="cab">${tc.e} ${tc.n}<span class="kc">${fmt(sub)} kcal</span></div>`;
+    if(!items.length){ html += `<div class="muted" style="padding:4px 0;">— sin registros —</div>`; }
+    items.forEach(x=>{
+      html += `<div class="item">
+        <div class="info"><div class="n">${x.nombre}</div><div class="s">${x.gramos?fmt(x.gramos)+' g · ':''}P ${fmt(x.prot)} · C ${fmt(x.carb)} · G ${fmt(x.grasa)}</div></div>
+        <div class="val">${fmt(x.kcal)}</div>
+        <button class="del" onclick="borrarComida('${x.id}')">🗑️</button>
+      </div>`;
+    });
+    html += `</div>`;
+  });
+  html += `</div>`;
+
+  if(estado.frecuentes.length){
+    html += `<div class="card"><h3><span class="em">⭐</span> Comidas frecuentes (registro rápido)</h3>`;
+    estado.frecuentes.forEach(f=>{
+      html += `<div class="item">
+        <div class="ico" style="background:var(--teal-cl)">⭐</div>
+        <div class="info"><div class="n">${f.nombre}</div><div class="s">${fmt(f.kcal)} kcal · P ${fmt(f.prot)} · C ${fmt(f.carb)} · G ${fmt(f.grasa)}</div></div>
+        <button class="btn btn-primary btn-sm" onclick="registrarFrecuente('${f.id}')">+ Hoy</button>
+        <button class="del" onclick="borrarFrecuente('${f.id}')">🗑️</button>
+      </div>`;
+    });
+    html += `</div>`;
+  }
+  $('#p-comidas').innerHTML = html;
+}
+
+let comidaTemp = null;
+function abrirAgregarComida(){
+  comidaTemp = null;
+  abrirModal(`
+    <h3>🍽️ Agregar comida</h3>
+    <div class="campo"><label>¿En qué comida?</label>
+      <div class="chips" id="mTipo">
+        ${TIPOS_COMIDA.map((t,i)=>`<div class="chip ${i===0?'sel':''}" data-v="${t.id}">${t.e} ${t.n}</div>`).join('')}
+      </div></div>
+    <div class="campo"><label>Buscar alimento</label>
+      <input id="mBuscar" placeholder="Ej: pollo, arroz, huevo..." autocomplete="off"></div>
+    <div class="resultados" id="mResultados"></div>
+    <div class="divider"></div>
+    <div class="muted" style="text-align:center; margin-bottom:8px;">o ingresa manualmente</div>
+    <button class="btn btn-ghost btn-block" onclick="comidaManual()">✏️ Entrada manual</button>
+  `);
+  let tipoSel = TIPOS_COMIDA[0].id;
+  chipSelect('#mTipo', v=>tipoSel=v);
+  const inp = $('#mBuscar');
+  const buscar = ()=>{
+    const q = inp.value.trim().toLowerCase();
+    const res = q ? ALIMENTOS.filter(a=>a.n.toLowerCase().includes(q)).slice(0,20) : ALIMENTOS.slice(0,20);
+    $('#mResultados').innerHTML = res.map((a,i)=>{
+      const idx = ALIMENTOS.indexOf(a);
+      return `<div class="res-item" onclick="elegirAlimento(${idx}, '${tipoSelGet()}')">
+        <div class="ico" style="background:var(--gris-cl); width:36px; height:36px; border-radius:9px; display:flex; align-items:center; justify-content:center;">${a.e||'🍴'}</div>
+        <div class="info"><div class="n">${a.n}</div><div class="s">${fmt(a.k)} kcal / 100g · P ${fmt(a.p)}</div></div>
+        <span style="color:var(--teal); font-weight:800;">+</span>
+      </div>`;
+    }).join('') || `<div class="muted" style="padding:10px;">Sin resultados. Usa entrada manual.</div>`;
+  };
+  window.tipoSelGet = ()=>tipoSel;
+  window._tipoComida = ()=>tipoSel;
+  inp.oninput = buscar;
+  buscar();
+  setTimeout(()=>inp.focus(), 100);
+}
+
+function elegirAlimento(idx, tipo){
+  const a = ALIMENTOS[idx];
+  const porcionDef = a.porcion || 100;
+  abrirModal(`
+    <h3>${a.e||'🍴'} ${a.n}</h3>
+    <p class="muted">Por 100 g: ${fmt(a.k)} kcal · P ${fmt(a.p)} · C ${fmt(a.c)} · G ${fmt(a.g)}</p>
+    <div class="campo"><label>Cantidad (gramos)</label>
+      <input id="mGramos" type="number" inputmode="decimal" value="${porcionDef}" oninput="prevMacro(${idx})"></div>
+    <div class="kpis" id="mPreview"></div>
+    <div class="fila" style="margin-top:14px;">
+      <button class="btn btn-ghost" onclick="guardarComoFrecuente(${idx})">⭐ Frecuente</button>
+      <button class="btn btn-primary" onclick="confirmarAlimento(${idx}, '${tipo}')">Agregar</button>
+    </div>
+  `);
+  prevMacro(idx);
+}
+function calcAlimento(idx, gramos){
+  const a = ALIMENTOS[idx]; const f = gramos/100;
+  return { kcal:Math.round(a.k*f), prot:+(a.p*f).toFixed(1), carb:+(a.c*f).toFixed(1), grasa:+(a.g*f).toFixed(1) };
+}
+function prevMacro(idx){
+  const g = +$('#mGramos').value || 0;
+  const v = calcAlimento(idx, g);
+  $('#mPreview').innerHTML = `
+    <div class="kpi"><div class="l">Calorías</div><div class="v">${fmt(v.kcal)}<span class="u"> kcal</span></div></div>
+    <div class="kpi"><div class="l">Proteína</div><div class="v">${fmt(v.prot,1)}<span class="u"> g</span></div></div>`;
+}
+function confirmarAlimento(idx, tipo){
+  const a = ALIMENTOS[idx]; const g = +$('#mGramos').value||0;
+  if(g<=0){ toast('Ingresa una cantidad'); return; }
+  const v = calcAlimento(idx, g);
+  estado.comidas.push({ id:uid(), fecha:hoyISO(), tipo, nombre:a.n, gramos:g, ...v });
+  guardar('comidas'); cerrarModal(); render(); toast('Comida agregada ✅');
+}
+function guardarComoFrecuente(idx){
+  const a = ALIMENTOS[idx]; const g = +$('#mGramos').value||100;
+  const v = calcAlimento(idx, g);
+  estado.frecuentes.push({ id:uid(), nombre:`${a.n} (${g}g)`, ...v });
+  guardar('frecuentes'); toast('Guardado en frecuentes ⭐');
+}
+function comidaManual(){
+  abrirModal(`
+    <h3>✏️ Entrada manual</h3>
+    <div class="campo"><label>Nombre</label><input id="cmN" placeholder="Ej: Ceviche, pizza casera..."></div>
+    <div class="campo"><label>¿En qué comida?</label>
+      <div class="chips" id="cmTipo">${TIPOS_COMIDA.map((t,i)=>`<div class="chip ${i===0?'sel':''}" data-v="${t.id}">${t.e} ${t.n}</div>`).join('')}</div></div>
+    <div class="fila">
+      <div class="campo"><label>Calorías</label><input id="cmK" type="number" inputmode="numeric" placeholder="kcal"></div>
+      <div class="campo"><label>Proteína (g)</label><input id="cmP" type="number" inputmode="decimal" placeholder="g"></div>
+    </div>
+    <div class="fila">
+      <div class="campo"><label>Carbos (g)</label><input id="cmC" type="number" inputmode="decimal" placeholder="g"></div>
+      <div class="campo"><label>Grasas (g)</label><input id="cmG" type="number" inputmode="decimal" placeholder="g"></div>
+    </div>
+    <label style="display:flex; align-items:center; gap:8px; font-size:13.5px; margin-bottom:12px;">
+      <input type="checkbox" id="cmFrec" style="width:auto;"> Guardar también como frecuente ⭐</label>
+    <button class="btn btn-primary btn-block" onclick="confirmarManual()">Agregar</button>
+  `);
+  let tipoSel = TIPOS_COMIDA[0].id; chipSelect('#cmTipo', v=>tipoSel=v); window._cmTipo=()=>tipoSel;
+}
+function confirmarManual(){
+  const nombre = $('#cmN').value.trim();
+  const kcal = +$('#cmK').value||0;
+  if(!nombre||kcal<=0){ toast('Pon nombre y calorías'); return; }
+  const obj = { nombre, kcal, prot:+$('#cmP').value||0, carb:+$('#cmC').value||0, grasa:+$('#cmG').value||0 };
+  estado.comidas.push({ id:uid(), fecha:hoyISO(), tipo:window._cmTipo(), gramos:null, ...obj });
+  guardar('comidas');
+  if($('#cmFrec').checked){ estado.frecuentes.push({ id:uid(), ...obj }); guardar('frecuentes'); }
+  cerrarModal(); render(); toast('Comida agregada ✅');
+}
+function registrarFrecuente(id){
+  const f = estado.frecuentes.find(x=>x.id===id); if(!f) return;
+  const tipo = new Date().getHours()<11?'desayuno':new Date().getHours()<16?'almuerzo':new Date().getHours()<21?'cena':'snack';
+  estado.comidas.push({ id:uid(), fecha:hoyISO(), tipo, nombre:f.nombre, gramos:null, kcal:f.kcal, prot:f.prot, carb:f.carb, grasa:f.grasa });
+  guardar('comidas'); render(); toast(`+ ${f.nombre} ✅`);
+}
+function borrarComida(id){ estado.comidas = estado.comidas.filter(x=>x.id!==id); guardar('comidas'); render(); }
+function borrarFrecuente(id){ estado.frecuentes = estado.frecuentes.filter(x=>x.id!==id); guardar('frecuentes'); render(); }
+
+/* ══════════════════════════════════════════════════════════════
+   PANTALLA: ACTIVIDAD
+   ══════════════════════════════════════════════════════════════ */
+function renderActividad(){
+  const hoy = estado.actividad.filter(x=>x.fecha===hoyISO());
+  const totalHoy = hoy.reduce((s,x)=>s+x.kcal,0);
+  const semana = estado.actividad.filter(x=>diasEntre(x.fecha,hoyISO())<7 && diasEntre(x.fecha,hoyISO())>=0);
+  const totalSem = semana.reduce((s,x)=>s+x.kcal,0);
+  let html = `
+    <div class="tit-pantalla">Actividad</div>
+    <div class="sub-pantalla">Registra tu ejercicio y quema calórica</div>
+    <div class="kpis" style="margin-bottom:14px;">
+      <div class="kpi"><div class="l">🔥 Quemado hoy</div><div class="v">${fmt(totalHoy)}<span class="u"> kcal</span></div></div>
+      <div class="kpi"><div class="l">📅 Esta semana</div><div class="v">${fmt(totalSem)}<span class="u"> kcal</span></div></div>
+    </div>
+    <button class="btn btn-naranja btn-block" onclick="abrirAgregarActividad()" style="margin-bottom:14px;">➕ Registrar actividad</button>
+    <div class="card"><h3><span class="em">📋</span> Registros recientes</h3>`;
+  const recientes = [...estado.actividad].sort((a,b)=>a.fecha<b.fecha?1:-1).slice(0,25);
+  if(!recientes.length){ html += `<div class="vacio"><span class="em">🏃</span>Aún no registras actividad.<br>¡Empieza a moverte!</div>`; }
+  recientes.forEach(x=>{
+    const act = ACTIVIDADES.find(a=>a.n===x.nombre);
+    html += `<div class="item">
+      <div class="ico" style="background:var(--naranja-cl)">${act?act.e:'🏃'}</div>
+      <div class="info"><div class="n">${x.nombre}</div><div class="s">${fmt(x.minutos)} min · ${x.fecha===hoyISO()?'hoy':nombreDia(x.fecha)}</div></div>
+      <div class="val" style="color:var(--naranja)">${fmt(x.kcal)}</div>
+      <button class="del" onclick="borrarActividad('${x.id}')">🗑️</button>
+    </div>`;
+  });
+  html += `</div>`;
+  $('#p-actividad').innerHTML = html;
+}
+function abrirAgregarActividad(){
+  abrirModal(`
+    <h3>🏃 Registrar actividad</h3>
+    <div class="campo"><label>Tipo de actividad</label>
+      <select id="aTipo">${ACTIVIDADES.map((a,i)=>`<option value="${i}">${a.e} ${a.n}</option>`).join('')}</select></div>
+    <div class="campo"><label>Duración (minutos)</label>
+      <input id="aMin" type="number" inputmode="numeric" value="30" oninput="prevActividad()"></div>
+    <div class="kpis" id="aPreview"></div>
+    <button class="btn btn-naranja btn-block" onclick="confirmarActividad()" style="margin-top:14px;">Agregar</button>
+  `);
+  $('#aTipo').onchange = prevActividad;
+  prevActividad();
+}
+function calcQuema(idx, min){
+  const a = ACTIVIDADES[idx];
+  // kcal = MET * peso(kg) * horas
+  return Math.round(a.met * pesoActual() * (min/60));
+}
+function prevActividad(){
+  const idx = +$('#aTipo').value; const min = +$('#aMin').value||0;
+  const kcal = calcQuema(idx, min);
+  $('#aPreview').innerHTML = `
+    <div class="kpi"><div class="l">🔥 Quema estimada</div><div class="v">${fmt(kcal)}<span class="u"> kcal</span></div></div>
+    <div class="kpi"><div class="l">⏱️ Intensidad</div><div class="v" style="font-size:15px;">${ACTIVIDADES[idx].met} MET</div></div>`;
+}
+function confirmarActividad(){
+  const idx = +$('#aTipo').value; const min = +$('#aMin').value||0;
+  if(min<=0){ toast('Ingresa los minutos'); return; }
+  estado.actividad.push({ id:uid(), fecha:hoyISO(), nombre:ACTIVIDADES[idx].n, minutos:min, kcal:calcQuema(idx,min) });
+  guardar('actividad'); cerrarModal(); render(); toast('Actividad registrada 🔥');
+}
+function borrarActividad(id){ estado.actividad = estado.actividad.filter(x=>x.id!==id); guardar('actividad'); render(); }
+
+/* ══════════════════════════════════════════════════════════════
+   PANTALLA: PESO
+   ══════════════════════════════════════════════════════════════ */
+function renderPeso(){
+  const datos = [...estado.peso].sort((a,b)=>a.fecha<b.fecha?-1:1);
+  const actual = pesoActual();
+  const inicial = estado.perfil.pesoInicial;
+  const meta = estado.perfil.pesoMeta;
+  const dif = actual - inicial;
+  const faltante = actual - meta;
+  const progreso = inicial!==meta ? clamp((inicial-actual)/(inicial-meta)*100, 0, 100) : 0;
+  const bajando = meta < inicial;
+
+  let html = `
+    <div class="tit-pantalla">Peso</div>
+    <div class="sub-pantalla">Tu curva de seguimiento</div>
+    <button class="btn btn-primary btn-block" onclick="abrirPeso()" style="margin-bottom:14px;">➕ Registrar peso de hoy</button>
+
+    <div class="card">
+      <div class="kpis">
+        <div class="kpi"><div class="l">⚖️ Actual</div><div class="v">${fmt(actual,1)}<span class="u"> kg</span></div></div>
+        <div class="kpi"><div class="l">🎯 Meta</div><div class="v">${fmt(meta,1)}<span class="u"> kg</span></div></div>
+        <div class="kpi"><div class="l">${dif<=0?'📉':'📈'} Cambio total</div><div class="v" style="color:${(dif<0)===bajando?'var(--verde)':'var(--rojo)'}">${dif>0?'+':''}${fmt(dif,1)}<span class="u"> kg</span></div></div>
+        <div class="kpi"><div class="l">🏁 Falta</div><div class="v">${fmt(Math.abs(faltante),1)}<span class="u"> kg</span></div></div>
+      </div>
+      <div style="margin-top:14px;">
+        <div class="muted" style="margin-bottom:6px;">Progreso hacia tu meta · ${fmt(progreso)}%</div>
+        <div class="barra-prog"><div style="width:${progreso}%"></div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3><span class="em">📊</span> Curva de peso</h3>
+      <canvas id="grafPeso" height="200"></canvas>
+    </div>
+
+    <div class="card"><h3><span class="em">📋</span> Historial</h3>`;
+  const ordDesc = [...datos].reverse();
+  if(!ordDesc.length){ html += `<div class="vacio"><span class="em">⚖️</span>Sin registros aún.</div>`; }
+  ordDesc.forEach((x,i)=>{
+    const prev = ordDesc[i+1];
+    const d = prev ? x.kg-prev.kg : 0;
+    html += `<div class="item">
+      <div class="info"><div class="n">${fmt(x.kg,1)} kg</div><div class="s">${x.fecha===hoyISO()?'Hoy':nombreDia(x.fecha)}</div></div>
+      ${prev?`<span class="pill ${(d<0)===bajando?'pill-teal':'pill-naranja'}">${d>0?'+':''}${fmt(d,1)} kg</span>`:''}
+      <button class="del" onclick="borrarPeso('${x.fecha}')">🗑️</button>
+    </div>`;
+  });
+  html += `</div>`;
+  $('#p-peso').innerHTML = html;
+  dibujarGrafica('grafPeso', datos.map(d=>({x:d.fecha, y:d.kg})), meta, 'kg');
+}
+function abrirPeso(){
+  const hoyP = estado.peso.find(x=>x.fecha===hoyISO());
+  abrirModal(`
+    <h3>⚖️ Registrar peso</h3>
+    <div class="campo"><label>Peso de hoy (kg)</label>
+      <input id="pKg" type="number" inputmode="decimal" step="0.1" value="${hoyP?hoyP.kg:fmt(pesoActual(),1)}" autofocus></div>
+    <p class="muted">💡 Pésate en ayunas, después del baño, para mayor consistencia.</p>
+    <button class="btn btn-primary btn-block" onclick="confirmarPeso()" style="margin-top:8px;">Guardar</button>
+  `);
+}
+function confirmarPeso(){
+  const kg = +$('#pKg').value;
+  if(kg<=0){ toast('Ingresa un peso válido'); return; }
+  const i = estado.peso.findIndex(x=>x.fecha===hoyISO());
+  if(i>=0) estado.peso[i].kg = kg; else estado.peso.push({fecha:hoyISO(), kg});
+  guardar('peso'); cerrarModal(); render(); toast('Peso registrado ✅');
+}
+function borrarPeso(fecha){ estado.peso = estado.peso.filter(x=>x.fecha!==fecha); guardar('peso'); render(); }
+
+/* ══════════════════════════════════════════════════════════════
+   PANTALLA: MEDIDAS
+   ══════════════════════════════════════════════════════════════ */
+const CAMPOS_MEDIDA = [
+  {k:'cuello', n:'Cuello', e:'🧣'}, {k:'pecho', n:'Pecho', e:'👕'},
+  {k:'cintura', n:'Cintura', e:'📏'}, {k:'cadera', n:'Cadera', e:'🍑'},
+  {k:'brazo', n:'Brazo', e:'💪'}, {k:'muslo', n:'Muslo', e:'🦵'},
+  {k:'pantorrilla', n:'Pantorrilla', e:'🦿'},
+];
+function renderMedidas(){
+  const datos = [...estado.medidas].sort((a,b)=>a.fecha<b.fecha?-1:1);
+  const ult = datos[datos.length-1];
+  const prim = datos[0];
+  let html = `
+    <div class="tit-pantalla">Medidas</div>
+    <div class="sub-pantalla">Tu progreso corporal (a veces la balanza engaña, la cinta no)</div>
+    <button class="btn btn-primary btn-block" onclick="abrirMedidas()" style="margin-bottom:14px;">➕ Registrar medidas</button>`;
+
+  if(ult){
+    html += `<div class="card"><h3><span class="em">📐</span> Últimas medidas <span class="muted" style="margin-left:auto; font-weight:400;">${ult.fecha===hoyISO()?'hoy':nombreDia(ult.fecha)}</span></h3><div class="kpis">`;
+    CAMPOS_MEDIDA.forEach(c=>{
+      if(ult[c.k]!=null){
+        const d = prim && prim!==ult && prim[c.k]!=null ? ult[c.k]-prim[c.k] : null;
+        html += `<div class="kpi"><div class="l">${c.e} ${c.n}</div><div class="v">${fmt(ult[c.k],1)}<span class="u"> cm</span></div>
+          ${d!=null?`<div class="u" style="color:${d<0?'var(--verde)':'var(--naranja)'}">${d>0?'+':''}${fmt(d,1)} cm total</div>`:''}</div>`;
+      }
+    });
+    html += `</div></div>
+    <div class="card"><h3><span class="em">📊</span> Evolución cintura</h3><canvas id="grafCintura" height="180"></canvas></div>`;
+  } else {
+    html += `<div class="card"><div class="vacio"><span class="em">📏</span>Sin medidas aún.<br>Registra las que quieras seguir (no tienes que llenar todas).</div></div>`;
+  }
+
+  html += `<div class="card"><h3><span class="em">📋</span> Historial</h3>`;
+  const desc = [...datos].reverse();
+  if(!desc.length) html += `<div class="muted">—</div>`;
+  desc.forEach(m=>{
+    const resumen = CAMPOS_MEDIDA.filter(c=>m[c.k]!=null).map(c=>`${c.n} ${fmt(m[c.k],1)}`).join(' · ');
+    html += `<div class="item"><div class="info"><div class="n">${m.fecha===hoyISO()?'Hoy':nombreDia(m.fecha)}</div><div class="s">${resumen||'—'}</div></div>
+      <button class="del" onclick="borrarMedida('${m.fecha}')">🗑️</button></div>`;
+  });
+  html += `</div>`;
+  $('#p-medidas').innerHTML = html;
+  if(ult) dibujarGrafica('grafCintura', datos.filter(d=>d.cintura!=null).map(d=>({x:d.fecha, y:d.cintura})), null, 'cm');
+}
+function abrirMedidas(){
+  const ult = [...estado.medidas].sort((a,b)=>a.fecha<b.fecha?-1:1).pop() || {};
+  const hoyM = estado.medidas.find(x=>x.fecha===hoyISO()) || {};
+  abrirModal(`
+    <h3>📏 Registrar medidas (cm)</h3>
+    <p class="muted" style="margin-bottom:12px;">Llena solo las que quieras seguir.</p>
+    ${CAMPOS_MEDIDA.map(c=>`<div class="campo"><label>${c.e} ${c.n}</label>
+      <input id="md_${c.k}" type="number" inputmode="decimal" step="0.1" placeholder="${ult[c.k]!=null?fmt(ult[c.k],1)+' cm (anterior)':'cm'}" value="${hoyM[c.k]!=null?hoyM[c.k]:''}"></div>`).join('')}
+    <button class="btn btn-primary btn-block" onclick="confirmarMedidas()">Guardar</button>
+  `);
+}
+function confirmarMedidas(){
+  const obj = { fecha:hoyISO() };
+  let alguno=false;
+  CAMPOS_MEDIDA.forEach(c=>{ const v=$('#md_'+c.k).value; if(v!==''){ obj[c.k]=+v; alguno=true; } });
+  if(!alguno){ toast('Ingresa al menos una medida'); return; }
+  const i = estado.medidas.findIndex(x=>x.fecha===hoyISO());
+  if(i>=0) estado.medidas[i]=obj; else estado.medidas.push(obj);
+  guardar('medidas'); cerrarModal(); render(); toast('Medidas guardadas ✅');
+}
+function borrarMedida(fecha){ estado.medidas = estado.medidas.filter(x=>x.fecha!==fecha); guardar('medidas'); render(); }
+
+/* ══════════════════════════════════════════════════════════════
+   PANTALLA: PLAN
+   ══════════════════════════════════════════════════════════════ */
+function renderPlan(){
+  const m = calcMetricas(estado.perfil);
+  const p = estado.perfil;
+  const actual = pesoActual();
+  const dif = Math.abs(actual - p.pesoMeta);
+  const semanas = m.cambioSemKg ? Math.ceil(dif/Math.abs(m.cambioSemKg)) : 0;
+  const fechaMeta = new Date(); fechaMeta.setDate(fechaMeta.getDate()+semanas*7);
+  const objTxt = { perder:'Perder grasa', ganar:'Ganar músculo', recomp:'Recomposición corporal' }[p.objetivo];
+
+  // Racha y cumplimiento
+  const { racha, ultimos } = calcRacha();
+
+  let html = `
+    <div class="tit-pantalla">Tu plan</div>
+    <div class="sub-pantalla">${objTxt} · ritmo ${p.ritmo}</div>
+
+    <div class="racha" style="margin-bottom:14px;">
+      <div class="fuego">🔥</div>
+      <div><div class="n">${racha}</div><div class="l">días seguidos cumpliendo tu meta</div></div>
+    </div>
+
+    <div class="card">
+      <h3><span class="em">🎯</span> Meta y proyección</h3>
+      <div class="kpis">
+        <div class="kpi"><div class="l">Meta calórica</div><div class="v">${fmt(m.metaKcal)}<span class="u"> kcal/día</span></div></div>
+        <div class="kpi"><div class="l">Ritmo estimado</div><div class="v">${fmt(Math.abs(m.cambioSemKg),2)}<span class="u"> kg/sem</span></div></div>
+        <div class="kpi"><div class="l">Peso meta</div><div class="v">${fmt(p.pesoMeta,1)}<span class="u"> kg</span></div></div>
+        <div class="kpi"><div class="l">Tiempo estimado</div><div class="v">${semanas}<span class="u"> semanas</span></div></div>
+      </div>
+      ${semanas?`<div class="semaforo sem-info" style="margin-top:12px;"><span class="ico">📅</span><span class="txt">Si mantienes el plan, llegarías a <b>${fmt(p.pesoMeta,1)} kg</b> alrededor del <b>${fechaMeta.toLocaleDateString('es',{day:'numeric',month:'long',year:'numeric'})}</b>.</span></div>`:''}
+    </div>
+
+    <div class="card">
+      <h3><span class="em">📊</span> Tu presupuesto energético diario</h3>
+      <div class="mini" style="margin-bottom:10px;"><span class="dot" style="background:var(--indigo)"></span>Metabolismo basal (TMB)<b>${fmt(m.tmb)} kcal</b></div>
+      <div class="mini" style="margin-bottom:10px;"><span class="dot" style="background:var(--teal)"></span>Actividad diaria (NEAT)<b>+${fmt(m.neat)} kcal</b></div>
+      <div class="mini" style="margin-bottom:10px;"><span class="dot" style="background:var(--naranja)"></span>Ejercicio<b>variable</b></div>
+      <div class="divider"></div>
+      <div class="mini" style="margin-bottom:10px;"><span class="dot" style="background:var(--gris)"></span><b style="margin-left:0;">Gasto de mantenimiento</b><b>${fmt(m.tdeeBase)} kcal</b></div>
+      <div class="mini"><span class="dot" style="background:${m.ajuste<0?'var(--rojo)':'var(--verde)'}"></span>Ajuste (${p.objetivo==='ganar'?'superávit':'déficit'})<b style="color:${m.ajuste<0?'var(--rojo)':'var(--verde)'}">${m.ajuste>0?'+':''}${fmt(m.ajuste)} kcal</b></div>
+    </div>
+
+    <div class="card">
+      <h3><span class="em">🥗</span> Tus macros objetivo</h3>
+      <div class="macros">
+        <div class="macro"><div class="lbl">Proteína</div><div class="val">${fmt(m.prot)}g</div><div class="meta-txt">${fmt(m.prot*4)} kcal · músculo</div></div>
+        <div class="macro"><div class="lbl">Carbos</div><div class="val">${fmt(m.carb)}g</div><div class="meta-txt">${fmt(m.carb*4)} kcal · energía</div></div>
+        <div class="macro"><div class="lbl">Grasas</div><div class="val">${fmt(m.grasa)}g</div><div class="meta-txt">${fmt(m.grasa*9)} kcal · hormonas</div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3><span class="em">✅</span> Cumplimiento (últimos 14 días)</h3>
+      <div class="cal-grid">
+        ${ultimos.map(d=>`<div class="cal-dia ${d.estado} ${d.fecha===hoyISO()?'hoy':''}" title="${d.fecha}">${new Date(d.fecha+'T12:00').getDate()}</div>`).join('')}
+      </div>
+      <p class="muted" style="margin-top:10px;">🟩 cumpliste tu meta · 🟥 te pasaste · ⬜ sin registro</p>
+    </div>
+
+    <div class="card">
+      <h3><span class="em">💡</span> Consejos de tu coach</h3>
+      ${consejosCoach(m).map(c=>`<div class="item" style="border:none; padding:8px 0;"><div class="ico" style="background:var(--teal-cl)">${c.e}</div><div class="info"><div class="s" style="font-size:13.5px; color:var(--texto);">${c.t}</div></div></div>`).join('')}
+    </div>`;
+  $('#p-plan').innerHTML = html;
+}
+
+function calcRacha(){
+  const m = calcMetricas(estado.perfil);
+  const ultimos = [];
+  for(let i=13;i>=0;i--){
+    const d = new Date(); d.setDate(d.getDate()-i);
+    const f = d.toISOString().slice(0,10);
+    const t = totalesDia(f);
+    let estadoDia;
+    if(t.kcal===0) estadoDia = f===hoyISO()?'':''; // sin registro
+    else {
+      const metaAj = m.metaKcal + t.ejercicio;
+      if(estado.perfil.objetivo==='ganar') estadoDia = t.kcal>=m.metaKcal*0.9 ? 'ok':'no';
+      else estadoDia = t.kcal<=metaAj*1.05 ? 'ok':'no';
+    }
+    ultimos.push({ fecha:f, estado:estadoDia });
+  }
+  // racha desde el final hacia atrás (contando días con registro cumplido)
+  let racha=0;
+  for(let i=ultimos.length-1;i>=0;i--){
+    if(ultimos[i].estado==='ok') racha++;
+    else if(ultimos[i].estado==='no') break;
+    else if(ultimos[i].fecha===hoyISO()) continue; // hoy sin registro no rompe
+    else break;
+  }
+  return { racha, ultimos };
+}
+
+function consejosCoach(m){
+  const c = [];
+  const p = estado.perfil;
+  const t = totalesDia(hoyISO());
+  c.push({ e:'💧', t:'Toma al menos 2-3 litros de agua al día. La hidratación mejora el rendimiento y controla el hambre.' });
+  c.push({ e:'💪', t:`Apunta a <b>${fmt(m.prot)}g de proteína</b> diaria. Es lo más importante para conservar y ganar músculo en déficit.` });
+  if(p.objetivo!=='ganar') c.push({ e:'🏋️', t:'Entrena fuerza 3-4 veces por semana. En déficit, el músculo se mantiene solo si le das el estímulo.' });
+  else c.push({ e:'🏋️', t:'Sobrecarga progresiva: sube peso o reps cada semana. Sin estímulo creciente no hay músculo nuevo.' });
+  c.push({ e:'😴', t:'Duerme 7-9 horas. El descanso es cuando el músculo se repara y se regulan las hormonas del hambre.' });
+  c.push({ e:'📈', t:'Pésate varias veces por semana y mira la <b>tendencia</b>, no el número diario (varía por agua/sodio).' });
+  if(p.ritmo==='agresivo') c.push({ e:'⚠️', t:'Elegiste ritmo agresivo: si te sientes sin energía o con mucha hambre, baja a moderado. La sostenibilidad gana.' });
+  return c;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   GRÁFICA (canvas simple)
+   ══════════════════════════════════════════════════════════════ */
+function dibujarGrafica(id, puntos, meta, unidad){
+  const cv = document.getElementById(id); if(!cv) return;
+  const dpr = window.devicePixelRatio||1;
+  const W = cv.clientWidth, H = cv.height;
+  cv.width = W*dpr; cv.height = H*dpr;
+  const ctx = cv.getContext('2d'); ctx.scale(dpr,dpr);
+  ctx.clearRect(0,0,W,H);
+  const pad = {l:38, r:14, t:14, b:24};
+  const gw = W-pad.l-pad.r, gh = H-pad.t-pad.b;
+  if(puntos.length===0){ ctx.fillStyle='#94a3b8'; ctx.font='13px sans-serif'; ctx.textAlign='center'; ctx.fillText('Sin datos aún',W/2,H/2); return; }
+
+  let vals = puntos.map(p=>p.y);
+  if(meta!=null) vals = vals.concat([meta]);
+  let min = Math.min(...vals), max = Math.max(...vals);
+  const rango = (max-min)||1; min -= rango*0.15; max += rango*0.15;
+  const X = i => puntos.length===1 ? pad.l+gw/2 : pad.l + (i/(puntos.length-1))*gw;
+  const Y = v => pad.t + (1-(v-min)/(max-min))*gh;
+
+  // grid + labels Y
+  ctx.strokeStyle='#f1f5f9'; ctx.fillStyle='#94a3b8'; ctx.font='10px sans-serif'; ctx.textAlign='right';
+  for(let i=0;i<=3;i++){
+    const v = min + (max-min)*i/3; const y = Y(v);
+    ctx.beginPath(); ctx.moveTo(pad.l,y); ctx.lineTo(W-pad.r,y); ctx.stroke();
+    ctx.fillText(fmt(v,1), pad.l-6, y+3);
+  }
+  // línea meta
+  if(meta!=null){
+    ctx.strokeStyle='#16a34a'; ctx.setLineDash([5,4]); ctx.beginPath();
+    ctx.moveTo(pad.l,Y(meta)); ctx.lineTo(W-pad.r,Y(meta)); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle='#16a34a'; ctx.textAlign='left'; ctx.font='10px sans-serif';
+    ctx.fillText('meta '+fmt(meta,1), pad.l+2, Y(meta)-4);
+  }
+  // área
+  const grad = ctx.createLinearGradient(0,pad.t,0,H-pad.b);
+  grad.addColorStop(0,'rgba(13,148,136,.25)'); grad.addColorStop(1,'rgba(13,148,136,0)');
+  ctx.beginPath(); ctx.moveTo(X(0),Y(puntos[0].y));
+  puntos.forEach((p,i)=>ctx.lineTo(X(i),Y(p.y)));
+  ctx.lineTo(X(puntos.length-1),H-pad.b); ctx.lineTo(X(0),H-pad.b); ctx.closePath();
+  ctx.fillStyle=grad; ctx.fill();
+  // línea
+  ctx.beginPath(); ctx.strokeStyle='#0d9488'; ctx.lineWidth=2.5; ctx.lineJoin='round';
+  puntos.forEach((p,i)=>{ const x=X(i),y=Y(p.y); i===0?ctx.moveTo(x,y):ctx.lineTo(x,y); }); ctx.stroke();
+  // puntos
+  ctx.fillStyle='#0d9488';
+  puntos.forEach((p,i)=>{ ctx.beginPath(); ctx.arc(X(i),Y(p.y),3.5,0,7); ctx.fill();
+    ctx.beginPath(); ctx.arc(X(i),Y(p.y),3.5,0,7); ctx.strokeStyle='#fff'; ctx.lineWidth=1.5; ctx.stroke(); });
+  // labels X (primero y último)
+  ctx.fillStyle='#94a3b8'; ctx.font='10px sans-serif'; ctx.textAlign='center';
+  const et = iso => new Date(iso+'T12:00').toLocaleDateString('es',{day:'numeric',month:'short'});
+  ctx.fillText(et(puntos[0].x), X(0), H-6);
+  if(puntos.length>1) ctx.fillText(et(puntos[puntos.length-1].x), X(puntos.length-1), H-6);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   MODAL / MENÚ
+   ══════════════════════════════════════════════════════════════ */
+function abrirModal(html){ $('#modalContenido').innerHTML = html; $('#modalBg').classList.add('abierto'); }
+function cerrarModal(){ $('#modalBg').classList.remove('abierto'); }
+$('#modalBg').onclick = e => { if(e.target===$('#modalBg')) cerrarModal(); };
+
+$('#btnMenu').onclick = ()=>{
+  const p = estado.perfil;
+  abrirModal(`
+    <h3>⚙️ Ajustes y perfil</h3>
+    <div class="card" style="box-shadow:none; background:var(--gris-cl); margin-bottom:12px;">
+      <div style="font-weight:800; font-size:16px;">${p.nombre||'Usuario'} ${p.sexo==='h'?'👨':'👩'}</div>
+      <div class="muted">${p.edad} años · ${fmt(p.altura)} cm · objetivo: ${({perder:'perder grasa',ganar:'ganar músculo',recomp:'recomposición'}[p.objetivo])}</div>
+    </div>
+    <button class="btn btn-ghost btn-block" onclick="editarPerfil()" style="margin-bottom:10px;">✏️ Editar perfil y metas</button>
+    <button class="btn btn-ghost btn-block" onclick="exportarDatos()" style="margin-bottom:10px;">💾 Exportar datos (respaldo)</button>
+    <button class="btn btn-ghost btn-block" onclick="document.getElementById('fileImport').click()" style="margin-bottom:10px;">📂 Importar datos</button>
+    <input type="file" id="fileImport" accept=".json" style="display:none;" onchange="importarDatos(event)">
+    <button class="btn btn-danger btn-block" onclick="borrarTodo()">🗑️ Borrar todos mis datos</button>
+    <p class="muted" style="text-align:center; margin-top:14px;">🔒 Todos tus datos se guardan solo en este dispositivo.</p>
+  `);
+};
+
+function editarPerfil(){
+  const p = estado.perfil;
+  abrirModal(`
+    <h3>✏️ Editar perfil</h3>
+    <div class="fila">
+      <div class="campo"><label>Edad</label><input id="e_edad" type="number" value="${p.edad}"></div>
+      <div class="campo"><label>Altura (cm)</label><input id="e_altura" type="number" value="${p.altura}"></div>
+    </div>
+    <div class="campo"><label>Peso meta (kg)</label><input id="e_pmeta" type="number" step="0.1" value="${p.pesoMeta}"></div>
+    <div class="campo"><label>Objetivo</label>
+      <select id="e_obj">
+        <option value="perder" ${p.objetivo==='perder'?'selected':''}>🔥 Perder grasa</option>
+        <option value="recomp" ${p.objetivo==='recomp'?'selected':''}>♻️ Recomposición</option>
+        <option value="ganar" ${p.objetivo==='ganar'?'selected':''}>💪 Ganar músculo</option>
+      </select></div>
+    <div class="campo"><label>Nivel de actividad diaria (NEAT)</label>
+      <select id="e_niv">${NIVELES.map(n=>`<option value="${n.id}" ${p.nivel===n.id?'selected':''}>${n.n} — ${n.d}</option>`).join('')}</select></div>
+    <div class="campo"><label>Ritmo</label>
+      <select id="e_rit">
+        <option value="suave" ${p.ritmo==='suave'?'selected':''}>🐢 Suave</option>
+        <option value="moderado" ${p.ritmo==='moderado'?'selected':''}>⚡ Moderado</option>
+        <option value="agresivo" ${p.ritmo==='agresivo'?'selected':''}>🔥 Agresivo</option>
+      </select></div>
+    <button class="btn btn-primary btn-block" onclick="guardarPerfil()">Guardar cambios</button>
+  `);
+}
+function guardarPerfil(){
+  const p = estado.perfil;
+  p.edad = +$('#e_edad').value||p.edad;
+  p.altura = +$('#e_altura').value||p.altura;
+  p.pesoMeta = +$('#e_pmeta').value||p.pesoMeta;
+  p.objetivo = $('#e_obj').value; p.nivel = $('#e_niv').value; p.ritmo = $('#e_rit').value;
+  guardar('perfil'); cerrarModal(); render(); toast('Perfil actualizado ✅');
+}
+
+function exportarDatos(){
+  const data = { perfil:estado.perfil, comidas:estado.comidas, frecuentes:estado.frecuentes,
+    actividad:estado.actividad, peso:estado.peso, medidas:estado.medidas, exportado:hoyISO(), v:1 };
+  const blob = new Blob([JSON.stringify(data,null,2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = `fitcoach-respaldo-${hoyISO()}.json`; a.click();
+  toast('Respaldo descargado 💾');
+}
+function importarDatos(ev){
+  const file = ev.target.files[0]; if(!file) return;
+  const r = new FileReader();
+  r.onload = e => {
+    try{
+      const d = JSON.parse(e.target.result);
+      if(!d.perfil){ toast('Archivo no válido'); return; }
+      ['perfil','comidas','frecuentes','actividad','peso','medidas'].forEach(k=>{ if(d[k]!=null){ estado[k]=d[k]; guardar(k); } });
+      cerrarModal(); render(); toast('Datos importados ✅');
+    }catch(err){ toast('Error al leer el archivo'); }
+  };
+  r.readAsText(file);
+}
+function borrarTodo(){
+  abrirModal(`<h3>⚠️ ¿Borrar todo?</h3>
+    <p class="muted">Se eliminarán tu perfil y todos tus registros de forma permanente. Esta acción no se puede deshacer.</p>
+    <p class="muted">💡 Considera exportar un respaldo antes.</p>
+    <button class="btn btn-danger btn-block" onclick="confirmarBorrarTodo()" style="margin-bottom:10px;">Sí, borrar todo</button>
+    <button class="btn btn-ghost btn-block" onclick="cerrarModal()">Cancelar</button>`);
+}
+function confirmarBorrarTodo(){
+  ['perfil','comidas','frecuentes','actividad','peso','medidas','cumplidos'].forEach(k=>DB.del(k));
+  location.reload();
+}
+
+/* ══════════════════════════════════════════════════════════════
+   ARRANQUE
+   ══════════════════════════════════════════════════════════════ */
+function uid(){ return 'x'+(idCounter++)+'_'+performance.now().toString(36).replace('.',''); }
+let idCounter = 0;
+
+function iniciarApp(){
+  const dt = new Date();
+  $('#fechaHoy').textContent = dt.toLocaleDateString('es',{weekday:'long', day:'numeric', month:'long'});
+  irA('hoy');
+}
+window.addEventListener('resize', ()=>{ if(['peso','medidas'].includes(pantallaActual)) render(); });
+
+// Exponer funciones usadas en onclick inline
+Object.assign(window, { irA, abrirAgregarComida, abrirAgregarActividad, elegirAlimento, prevMacro,
+  confirmarAlimento, guardarComoFrecuente, comidaManual, confirmarManual, registrarFrecuente,
+  borrarComida, borrarFrecuente, confirmarActividad, borrarActividad, prevActividad,
+  abrirPeso, confirmarPeso, borrarPeso, abrirMedidas, confirmarMedidas, borrarMedida,
+  editarPerfil, guardarPerfil, exportarDatos, importarDatos, borrarTodo, confirmarBorrarTodo,
+  cerrarModal });
+
+// ¿Perfil existe?
+if(estado.perfil){
+  $('#onb').classList.add('oculto');
+  $('#app').style.display='block';
+  iniciarApp();
+} else {
+  onbDatos.nombre = '';
+  renderOnb();
+}
+</script>
+</body>
+</html>
