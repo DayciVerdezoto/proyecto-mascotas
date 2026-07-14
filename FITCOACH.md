@@ -21,6 +21,8 @@ Pensada para poder publicarse en un enlace público **sin exponer tus datos de s
 - **Auto-bloqueo** tras 30 minutos de inactividad y opción de **cerrar sesión**.
 - Si olvidas la contraseña **no hay recuperación** (ese es justamente el punto):
   solo puedes empezar de cero.
+- La **copia de seguridad** que subes a Google Drive / iCloud también va
+  **cifrada**: es el mismo cofre protegido por tu contraseña.
 
 ## ✨ Qué hace
 
@@ -42,7 +44,9 @@ Pensada para poder publicarse en un enlace público **sin exponer tus datos de s
   pantorrilla, con evolución.
 - **Plan y metas**: proyección de fecha estimada, presupuesto energético,
   racha de cumplimiento, calendario de los últimos 14 días y consejos.
-- **Respaldo**: exportar/importar tus datos en un archivo `.json`.
+- **Copia de seguridad en la nube**: guarda una copia **cifrada** en tu
+  **Google Drive o iCloud** con el menú de compartir del teléfono, y restaura
+  desde ese archivo con tu contraseña (igual que la app de finanzas).
 
 ## 🧮 Cómo se calcula
 

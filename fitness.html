@@ -1386,12 +1386,20 @@ $('#btnMenu').onclick = ()=>{
       <div class="muted">${p.edad} años · ${fmt(p.altura)} cm · objetivo: ${({perder:'perder grasa',ganar:'ganar músculo',recomp:'recomposición'}[p.objetivo])}</div>
     </div>
     <button class="btn btn-ghost btn-block" onclick="editarPerfil()" style="margin-bottom:10px;">✏️ Editar perfil y metas</button>
-    <button class="btn btn-ghost btn-block" onclick="exportarDatos()" style="margin-bottom:10px;">💾 Exportar datos (respaldo)</button>
-    <button class="btn btn-ghost btn-block" onclick="document.getElementById('fileImport').click()" style="margin-bottom:10px;">📂 Importar datos</button>
-    <input type="file" id="fileImport" accept=".json" style="display:none;" onchange="importarDatos(event)">
+
+    <div class="card" style="box-shadow:none; background:var(--teal-cl); margin-bottom:12px; padding:14px;">
+      <h3 style="margin-bottom:6px;"><span class="em">☁️</span> Copia de seguridad en la nube</h3>
+      <p class="muted" style="margin-bottom:12px;">Tus datos viven en este dispositivo. Guarda de vez en cuando una copia <b>cifrada</b> en tu Google Drive (o iCloud) para no perderlos y poder pasarlos a otro dispositivo. Para restaurar, descargas esa copia y usas “Importar”.</p>
+      <button class="btn btn-primary btn-block" onclick="respaldarDrive()" style="margin-bottom:10px;">☁️ Guardar copia en Google Drive / iCloud</button>
+      <button class="btn btn-ghost btn-block" onclick="descargarRespaldo()" style="margin-bottom:10px;">💾 Descargar copia (archivo)</button>
+      <button class="btn btn-ghost btn-block" onclick="document.getElementById('fileImport').click()">📂 Importar / Restaurar copia</button>
+      <input type="file" id="fileImport" accept=".json,application/json" style="display:none;" onchange="importarRespaldo(event)">
+      <div class="muted" id="driveMsg" style="margin-top:10px; text-align:center;"></div>
+    </div>
+
     <button class="btn btn-ghost btn-block" onclick="cerrarSesion()" style="margin-bottom:10px;">🔒 Cerrar sesión</button>
     <button class="btn btn-danger btn-block" onclick="borrarTodo()">🗑️ Borrar todos mis datos</button>
-    <p class="muted" style="text-align:center; margin-top:14px;">🔒 Tus datos están cifrados con tu contraseña y solo se guardan en este dispositivo.</p>
+    <p class="muted" style="text-align:center; margin-top:14px;">🔒 Tus datos están cifrados con tu contraseña y solo se guardan en este dispositivo. La copia de Drive también va cifrada.</p>
   `);
 };
 
@@ -1430,26 +1438,66 @@ function guardarPerfil(){
   guardar('perfil'); cerrarModal(); render(); toast('Perfil actualizado ✅');
 }
 
-function exportarDatos(){
-  const data = { perfil:estado.perfil, comidas:estado.comidas, frecuentes:estado.frecuentes,
-    actividad:estado.actividad, peso:estado.peso, medidas:estado.medidas, exportado:hoyISO(), v:1 };
-  const blob = new Blob([JSON.stringify(data,null,2)], {type:'application/json'});
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob); a.download = `fitcoach-respaldo-${hoyISO()}.json`; a.click();
-  toast('Respaldo descargado 💾');
+/* --- Respaldo cifrado en Google Drive / iCloud (mismo modelo que finanzas) --- */
+function nombreRespaldo(){ return `fitcoach-respaldo-${hoyISO()}.json`; }
+async function asegurarVaultActual(){
+  if(cryptoKey && estado && vault){ vault.data = await cifrar(cryptoKey, estado); localStorage.setItem(VAULT_KEY, JSON.stringify(vault)); }
 }
-function importarDatos(ev){
-  const file = ev.target.files[0]; if(!file) return;
+function driveMsg(html){ const el=$('#driveMsg'); if(el) el.innerHTML=html; }
+async function descargarRespaldo(){
+  await asegurarVaultActual();
+  const blob = new Blob([JSON.stringify(vault,null,2)], {type:'application/json'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = nombreRespaldo(); a.click(); URL.revokeObjectURL(a.href);
+  driveMsg('Archivo descargado. Puedes subirlo a Drive desde tus Descargas.'); toast('Copia descargada 💾');
+}
+async function respaldarDrive(){
+  await asegurarVaultActual();
+  driveMsg('');
+  const file = new File([JSON.stringify(vault,null,2)], nombreRespaldo(), {type:'application/json'});
+  try{
+    if(navigator.canShare && navigator.canShare({files:[file]})){
+      await navigator.share({ files:[file], title:'Respaldo de FitCoach',
+        text:'Copia cifrada de tus datos de FitCoach. Guárdala en Google Drive (o iCloud).' });
+      driveMsg('✅ Si elegiste Google Drive, tu copia quedó guardada ahí.');
+    } else {
+      await descargarRespaldo();
+      driveMsg('Tu navegador descargó el archivo. Ábrelo y toca <b>Compartir → Google Drive</b> para guardarlo ahí.');
+    }
+  }catch(e){
+    if(e && e.name==='AbortError'){ driveMsg('Cancelaste el guardado.'); return; }
+    await descargarRespaldo();
+    driveMsg('Descargué el archivo; guárdalo en Google Drive desde <b>Compartir</b>.');
+  }
+}
+function importarRespaldo(ev){
+  const f = ev.target.files[0]; if(!f) return;
   const r = new FileReader();
-  r.onload = e => {
+  r.onload = async () => {
     try{
-      const d = JSON.parse(e.target.result);
-      if(!d.perfil){ toast('Archivo no válido'); return; }
-      ['perfil','comidas','frecuentes','actividad','peso','medidas'].forEach(k=>{ if(d[k]!=null){ estado[k]=d[k]; guardar(k); } });
-      cerrarModal(); render(); toast('Datos importados ✅');
-    }catch(err){ toast('Error al leer el archivo'); }
+      const data = JSON.parse(r.result);
+      if(data && data.check && data.data && data.salt){
+        // Respaldo cifrado
+        const pass = prompt('Escribe la contraseña con la que se creó este respaldo:');
+        if(pass===null){ ev.target.value=''; return; }
+        const key = await derivarLlave(pass, deB64(data.salt)); let ok=false;
+        try{ ok = (await descifrar(key, data.check))===CHECK_TOKEN; }catch(_){}
+        if(!ok){ alert('Contraseña incorrecta para este respaldo.'); ev.target.value=''; return; }
+        if(confirm('Esto reemplazará tus datos actuales por los del respaldo. ¿Continuar?')){
+          vault = data; cryptoKey = key; estado = await descifrar(key, data.data);
+          localStorage.setItem(VAULT_KEY, JSON.stringify(vault)); if(haySesion()) await guardarSesion(key);
+          cerrarModal(); iniciarApp(); toast('Respaldo restaurado ✅');
+        }
+      } else if(data && (data.perfil!==undefined)){
+        // Respaldo antiguo sin cifrar (compatibilidad)
+        if(confirm('¿Importar este respaldo? Reemplazará tus datos actuales.')){
+          ['perfil','comidas','frecuentes','actividad','peso','medidas','cumplidos'].forEach(k=>{ if(data[k]!=null) estado[k]=data[k]; });
+          guardar(); cerrarModal(); render(); toast('Datos importados ✅');
+        }
+      } else { alert('El archivo no es un respaldo válido de FitCoach.'); }
+    }catch(e){ alert('El archivo no es un respaldo válido de FitCoach.'); }
+    ev.target.value='';
   };
-  r.readAsText(file);
+  r.readAsText(f);
 }
 function borrarTodo(){
   abrirModal(`<h3>⚠️ ¿Borrar todo?</h3>
@@ -1482,7 +1530,7 @@ Object.assign(window, { irA, abrirAgregarComida, abrirAgregarActividad, elegirAl
   confirmarAlimento, guardarComoFrecuente, comidaManual, confirmarManual, registrarFrecuente,
   borrarComida, borrarFrecuente, confirmarActividad, borrarActividad, prevActividad,
   abrirPeso, confirmarPeso, borrarPeso, abrirMedidas, confirmarMedidas, borrarMedida,
-  editarPerfil, guardarPerfil, exportarDatos, importarDatos, borrarTodo, confirmarBorrarTodo,
+  editarPerfil, guardarPerfil, respaldarDrive, descargarRespaldo, importarRespaldo, borrarTodo, confirmarBorrarTodo,
   cerrarSesion, cerrarModal });
 
 // Arranque: mostrar candado (login o registro)
