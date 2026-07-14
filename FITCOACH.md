@@ -37,8 +37,9 @@ Pensada para poder publicarse en un enlace público **sin exponer tus datos de s
 - **Registro de comidas**: base de alimentos con calorías y macros + tus
   **comidas frecuentes** guardadas para registro en 1 toque + entrada manual.
 - **📷 Foto de comida → macros con IA**: toma una foto del plato y la app
-  estima calorías y macros usando Claude (con tu propia clave de Anthropic,
-  guardada cifrada en tu dispositivo; ~1–3 centavos por foto).
+  estima calorías y macros usando Claude (modelo económico Haiku, con tu
+  propia clave de Anthropic guardada cifrada en tu dispositivo; menos de
+  1 centavo por foto).
 - **🧠 Coach del día**: analiza lo que llevas comido y **sugiere ajustes**
   para esta comida y las siguientes, de modo que cierres el día cumpliendo
   tus objetivos de calorías y proteína.

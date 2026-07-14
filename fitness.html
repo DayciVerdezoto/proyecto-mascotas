@@ -1014,7 +1014,7 @@ function borrarFrecuente(id){ estado.frecuentes = estado.frecuentes.filter(x=>x.
 /* ══════════════════════════════════════════════════════════════
    FOTO DE COMIDA → MACROS CON IA (Claude vision, clave del usuario)
    ══════════════════════════════════════════════════════════════ */
-const IA_MODELO = 'claude-opus-4-8';
+const IA_MODELO = 'claude-haiku-4-5'; // modelo económico (~0.3-0.5 centavos/foto)
 const IA_SCHEMA = {
   type:'object', additionalProperties:false,
   required:['plato','alimentos','total','confianza','nota'],
@@ -1171,7 +1171,7 @@ function guardarFotoEditada(){
 function pedirClaveIA(tipo, file){
   abrirModal(`
     <h3>🤖 Activar análisis con IA</h3>
-    <p class="muted" style="margin-bottom:12px;">Para leer las macros desde una foto, la app usa la IA de Claude con <b>tu propia clave</b>. Cuesta ~1–3 centavos por foto (pagas tu propio uso) y la clave se guarda <b>cifrada solo en tu dispositivo</b>.</p>
+    <p class="muted" style="margin-bottom:12px;">Para leer las macros desde una foto, la app usa la IA de Claude (modelo económico Haiku) con <b>tu propia clave</b>. Cuesta <b>menos de 1 centavo por foto</b> (pagas tu propio uso) y la clave se guarda <b>cifrada solo en tu dispositivo</b>.</p>
     <div class="campo"><label>Clave de API de Anthropic</label>
       <input id="iaKey" placeholder="sk-ant-..." autocomplete="off"></div>
     <p class="muted" style="margin-bottom:12px;">¿No tienes clave? Créala gratis en <b>console.anthropic.com</b> → API Keys.</p>
@@ -1791,7 +1791,7 @@ function ajustesIA(){
   const tiene = !!(cfg().apiKeyIA||'').trim();
   abrirModal(`
     <h3>🤖 Análisis de fotos con IA</h3>
-    <p class="muted" style="margin-bottom:12px;">Con tu clave de <b>Anthropic (Claude)</b>, la app analiza una foto de tu comida y estima las calorías y macros. Cuesta ~1–3 centavos por foto (tú pagas tu uso). La clave se guarda <b>cifrada solo en este dispositivo</b>.</p>
+    <p class="muted" style="margin-bottom:12px;">Con tu clave de <b>Anthropic (Claude)</b>, la app analiza una foto de tu comida y estima las calorías y macros. Usa el modelo económico <b>Haiku</b>: cuesta <b>menos de 1 centavo por foto</b> (tú pagas tu uso). La clave se guarda <b>cifrada solo en este dispositivo</b>.</p>
     <div class="campo"><label>Clave de API ${tiene?'(guardada ✅)':''}</label>
       <input id="iaKeyCfg" placeholder="sk-ant-..." value="${(cfg().apiKeyIA||'').replace(/"/g,'&quot;')}" autocomplete="off"></div>
     <p class="muted" style="margin-bottom:12px;">Consíguela gratis en <b>console.anthropic.com</b> → API Keys.</p>
