@@ -36,6 +36,12 @@ Pensada para poder publicarse en un enlace público **sin exponer tus datos de s
   - **Macros** objetivo (proteína alta para conservar/ganar músculo).
 - **Registro de comidas**: base de alimentos con calorías y macros + tus
   **comidas frecuentes** guardadas para registro en 1 toque + entrada manual.
+- **📅 Historial por día**: navega entre días y ve qué comidas ya registraste
+  y cuáles quedan **pendientes** (desayuno/almuerzo/cena).
+- **🔎 Búsqueda y análisis**: busca por alimento, filtra por tipo de comida y
+  rango de fechas, y ve un análisis de **dónde se van tus calorías** (los
+  alimentos que más suman) y tu promedio diario — para detectar patrones y
+  saber qué reemplazar.
 - **📷 Foto de comida → macros con IA**: toma una foto del plato y la app
   estima calorías y macros usando Claude (modelo económico Haiku, con tu
   propia clave de Anthropic guardada cifrada en tu dispositivo; menos de

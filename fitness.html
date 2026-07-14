@@ -752,6 +752,7 @@ $('#tabs').querySelectorAll('button').forEach(b=>{
   b.onclick = ()=>irA(b.dataset.p);
 });
 function irA(p){
+  if(p==='comidas'){ comidasVista='dia'; comidasFecha=hoyISO(); }
   pantallaActual = p;
   $('#tabs').querySelectorAll('button').forEach(b=>b.classList.toggle('act', b.dataset.p===p));
   document.querySelectorAll('.pantalla').forEach(s=>s.classList.remove('act'));
@@ -854,22 +855,52 @@ function renderHoy(){
 /* ══════════════════════════════════════════════════════════════
    PANTALLA: COMIDAS
    ══════════════════════════════════════════════════════════════ */
+let comidasFecha = null;      // día que se está viendo (modo 'dia')
+let comidasVista = 'dia';     // 'dia' | 'historial'
+let histBusqueda = '', histTipo = 'todos', histRango = '7';
+
 function renderComidas(){
-  const c = estado.comidas.filter(x=>x.fecha===hoyISO());
-  const t = totalesDia(hoyISO());
+  if(comidasVista==='historial'){ renderHistorial(); return; }
+  if(!comidasFecha) comidasFecha = hoyISO();
+  const f = comidasFecha, esHoy = f===hoyISO();
+  const c = estado.comidas.filter(x=>x.fecha===f);
+  const t = totalesDia(f);
+  const m = calcMetricas(estado.perfil);
+  const metaAj = m.metaKcal + t.ejercicio;
+  const hechas = new Set(c.map(x=>x.tipo));
+  const pendientes = ['desayuno','almuerzo','cena'].filter(p=>!hechas.has(p));
+
   let html = `
     <div class="tit-pantalla">Comidas</div>
-    <div class="sub-pantalla">Registra lo que comes hoy · ${fmt(t.kcal)} kcal · ${fmt(t.prot)}g prot</div>
-    <button class="btn btn-primary btn-block" onclick="abrirAgregarComida()" style="margin-bottom:14px;">➕ Agregar comida</button>
-    <div class="card">`;
+    <div class="sub-pantalla">Revisa y registra tus comidas por día</div>
+
+    <div class="card" style="display:flex; align-items:center; justify-content:space-between; padding:10px 12px;">
+      <button class="btn-icono" style="background:var(--gris-cl); color:var(--texto);" onclick="cambiarDiaComida(-1)">‹</button>
+      <div style="text-align:center;">
+        <div style="font-weight:800; text-transform:capitalize;">${esHoy?'Hoy':nombreDia(f)}</div>
+        <div class="muted">${fmt(t.kcal)} / ${fmt(metaAj)} kcal · P ${fmt(t.prot)}g</div>
+      </div>
+      <button class="btn-icono" style="background:var(--gris-cl); color:var(--texto); ${esHoy?'opacity:.25; pointer-events:none;':''}" onclick="cambiarDiaComida(1)">›</button>
+    </div>
+
+    ${esHoy
+      ? `<button class="btn btn-primary btn-block" onclick="abrirAgregarComida()" style="margin-bottom:10px;">➕ Agregar comida</button>`
+      : `<button class="btn btn-ghost btn-block" onclick="cambiarDiaComida('hoy')" style="margin-bottom:10px;">↩︎ Volver a hoy</button>`}
+    <button class="btn btn-indigo btn-block" onclick="verHistorial()" style="margin-bottom:14px;">🔎 Historial y análisis</button>`;
+
+  if(esHoy && pendientes.length){
+    html += `<div class="semaforo sem-warn" style="margin-bottom:14px;"><span class="ico">📝</span><span class="txt">Te falta registrar: <b>${pendientes.map(p=>TIPOS_COMIDA.find(t=>t.id===p).n).join(', ')}</b>.</span></div>`;
+  }
+
+  html += `<div class="card">`;
   TIPOS_COMIDA.forEach(tc=>{
     const items = c.filter(x=>x.tipo===tc.id);
     const sub = items.reduce((s,x)=>s+x.kcal,0);
-    html += `<div class="grupo-comida"><div class="cab">${tc.e} ${tc.n}<span class="kc">${fmt(sub)} kcal</span></div>`;
-    if(!items.length){ html += `<div class="muted" style="padding:4px 0;">— sin registros —</div>`; }
+    const esPrincipal = tc.id!=='snack';
+    html += `<div class="grupo-comida"><div class="cab">${tc.e} ${tc.n}${items.length?`<span class="kc">${fmt(sub)} kcal</span>`:`<span class="kc" style="color:${esPrincipal?'var(--amar)':'var(--gris)'}">${esPrincipal?'⏳ pendiente':'—'}</span>`}</div>`;
     items.forEach(x=>{
       html += `<div class="item">
-        <div class="info"><div class="n">${x.nombre}</div><div class="s">${x.gramos?fmt(x.gramos)+' g · ':''}P ${fmt(x.prot)} · C ${fmt(x.carb)} · G ${fmt(x.grasa)}</div></div>
+        <div class="info"><div class="n">${x.ia?'📷 ':''}${x.nombre}</div><div class="s">${x.gramos?fmt(x.gramos)+' g · ':''}P ${fmt(x.prot)} · C ${fmt(x.carb)} · G ${fmt(x.grasa)}</div></div>
         <div class="val">${fmt(x.kcal)}</div>
         <button class="del" onclick="borrarComida('${x.id}')">🗑️</button>
       </div>`;
@@ -878,19 +909,98 @@ function renderComidas(){
   });
   html += `</div>`;
 
-  if(estado.frecuentes.length){
+  if(esHoy && estado.frecuentes.length){
     html += `<div class="card"><h3><span class="em">⭐</span> Comidas frecuentes (registro rápido)</h3>`;
-    estado.frecuentes.forEach(f=>{
+    estado.frecuentes.forEach(fr=>{
       html += `<div class="item">
         <div class="ico" style="background:var(--teal-cl)">⭐</div>
-        <div class="info"><div class="n">${f.nombre}</div><div class="s">${fmt(f.kcal)} kcal · P ${fmt(f.prot)} · C ${fmt(f.carb)} · G ${fmt(f.grasa)}</div></div>
-        <button class="btn btn-primary btn-sm" onclick="registrarFrecuente('${f.id}')">+ Hoy</button>
-        <button class="del" onclick="borrarFrecuente('${f.id}')">🗑️</button>
+        <div class="info"><div class="n">${fr.nombre}</div><div class="s">${fmt(fr.kcal)} kcal · P ${fmt(fr.prot)} · C ${fmt(fr.carb)} · G ${fmt(fr.grasa)}</div></div>
+        <button class="btn btn-primary btn-sm" onclick="registrarFrecuente('${fr.id}')">+ Hoy</button>
+        <button class="del" onclick="borrarFrecuente('${fr.id}')">🗑️</button>
       </div>`;
     });
     html += `</div>`;
   }
   $('#p-comidas').innerHTML = html;
+}
+function cambiarDiaComida(d){
+  if(d==='hoy'){ comidasFecha=hoyISO(); render(); return; }
+  const dt=new Date((comidasFecha||hoyISO())+'T12:00'); dt.setDate(dt.getDate()+d);
+  const nf=dt.toISOString().slice(0,10);
+  if(nf>hoyISO()) return;
+  comidasFecha=nf; render();
+}
+function verHistorial(){ comidasVista='historial'; render(); }
+function verDia(){ comidasVista='dia'; render(); }
+
+/* ---------- Historial + búsqueda + análisis ---------- */
+function renderHistorial(){
+  const tipos=[{id:'todos',n:'Todas',e:'🍽️'}, ...TIPOS_COMIDA];
+  const rangos=[{v:'7',n:'7 días'},{v:'30',n:'30 días'},{v:'todos',n:'Todo'}];
+  $('#p-comidas').innerHTML = `
+    <div class="tit-pantalla">Historial</div>
+    <div class="sub-pantalla">Busca y analiza qué has comido</div>
+    <button class="btn btn-ghost btn-sm" onclick="verDia()" style="margin-bottom:12px;">‹ Volver al día</button>
+    <div class="card">
+      <div class="campo" style="margin-bottom:10px;">
+        <input id="histBuscar" placeholder="🔎 Buscar alimento (ej: arroz, pan, gaseosa...)" value="${histBusqueda.replace(/"/g,'&quot;')}" oninput="buscarHist(this.value)" autocomplete="off">
+      </div>
+      <div class="chips" style="margin-bottom:8px;">
+        ${tipos.map(t=>`<div class="chip ${histTipo===t.id?'sel':''}" onclick="filtrarHistTipo('${t.id}')">${t.e} ${t.n}</div>`).join('')}
+      </div>
+      <div class="chips">
+        ${rangos.map(r=>`<div class="chip ${histRango===r.v?'sel':''}" onclick="filtrarHistRango('${r.v}')">${r.n}</div>`).join('')}
+      </div>
+    </div>
+    <div id="histResultado"></div>`;
+  pintarHistorial();
+}
+function buscarHist(v){ histBusqueda=v; pintarHistorial(); }
+function filtrarHistTipo(t){ histTipo=t; renderHistorial(); }
+function filtrarHistRango(r){ histRango=r; renderHistorial(); }
+function pintarHistorial(){
+  const cont=$('#histResultado'); if(!cont) return;
+  let items=[...estado.comidas];
+  if(histRango!=='todos'){ const d=+histRango; items=items.filter(x=>{const dd=diasEntre(x.fecha,hoyISO()); return dd>=0 && dd<d;}); }
+  if(histTipo!=='todos') items=items.filter(x=>x.tipo===histTipo);
+  const q=histBusqueda.trim().toLowerCase();
+  if(q) items=items.filter(x=>x.nombre.toLowerCase().includes(q));
+  if(!items.length){ cont.innerHTML=`<div class="card"><div class="vacio"><span class="em">🔎</span>Sin comidas para este filtro.</div></div>`; return; }
+
+  const dias=[...new Set(items.map(x=>x.fecha))];
+  const totalK=items.reduce((s,x)=>s+x.kcal,0);
+  const promDia=dias.length?Math.round(totalK/dias.length):0;
+  const porNombre={};
+  items.forEach(x=>{ if(!porNombre[x.nombre]) porNombre[x.nombre]={n:0,kcal:0}; porNombre[x.nombre].n++; porNombre[x.nombre].kcal+=x.kcal; });
+  const topKcal=Object.entries(porNombre).sort((a,b)=>b[1].kcal-a[1].kcal).slice(0,5);
+
+  const porDia={}; items.forEach(x=>{ (porDia[x.fecha]=porDia[x.fecha]||[]).push(x); });
+  const fechas=Object.keys(porDia).sort().reverse();
+
+  let html=`
+    <div class="card">
+      <h3><span class="em">📊</span> Análisis · ${dias.length} día${dias.length!==1?'s':''}</h3>
+      <div class="kpis" style="margin-bottom:12px;">
+        <div class="kpi"><div class="l">Promedio diario</div><div class="v">${fmt(promDia)}<span class="u"> kcal</span></div></div>
+        <div class="kpi"><div class="l">Registros</div><div class="v">${items.length}</div></div>
+      </div>
+      <div class="muted" style="font-weight:700; margin-bottom:4px;">🔺 Dónde se van tus calorías</div>
+      ${topKcal.map(([n,d])=>`<div class="item" style="padding:7px 0;"><div class="info"><div class="n">${n}</div><div class="s">${d.n} vez/veces · ${fmt(Math.round(d.kcal/d.n))} kcal c/u</div></div><div class="val">${fmt(d.kcal)}</div></div>`).join('')}
+      <p class="muted" style="margin-top:8px;">💡 Los de arriba son los que más suman a tu total. Si buscas dónde recortar o qué reemplazar, empieza por ahí.</p>
+    </div>`;
+
+  fechas.forEach(f=>{
+    const day=porDia[f]; const dk=day.reduce((s,x)=>s+x.kcal,0);
+    html+=`<div class="card"><h3 style="justify-content:space-between; display:flex;"><span style="text-transform:capitalize;">${f===hoyISO()?'Hoy':nombreDia(f)}</span><span class="pill pill-teal">${fmt(dk)} kcal</span></h3>`;
+    TIPOS_COMIDA.forEach(tc=>{
+      const its=day.filter(x=>x.tipo===tc.id); if(!its.length) return;
+      html+=`<div class="grupo-comida"><div class="cab">${tc.e} ${tc.n}<span class="kc">${fmt(its.reduce((s,x)=>s+x.kcal,0))} kcal</span></div>`;
+      its.forEach(x=>{ html+=`<div class="item"><div class="info"><div class="n">${x.ia?'📷 ':''}${x.nombre}</div><div class="s">${x.gramos?fmt(x.gramos)+' g · ':''}P ${fmt(x.prot)} · C ${fmt(x.carb)} · G ${fmt(x.grasa)}</div></div><div class="val">${fmt(x.kcal)}</div><button class="del" onclick="borrarComida('${x.id}')">🗑️</button></div>`; });
+      html+=`</div>`;
+    });
+    html+=`</div>`;
+  });
+  cont.innerHTML=html;
 }
 
 let comidaTemp = null;
@@ -1821,7 +1931,8 @@ Object.assign(window, { irA, abrirAgregarComida, abrirAgregarActividad, elegirAl
   editarPerfil, guardarPerfil, respaldarDrive, descargarRespaldo, importarRespaldo, borrarTodo, confirmarBorrarTodo,
   cerrarSesion, cerrarModal, cfg, guardar,
   abrirFoto, guardarResultadoFoto, editarResultadoFoto, guardarFotoEditada, pedirClaveIA, guardarClaveIA,
-  abrirGarmin, confirmarGarmin, ajustesIA });
+  abrirGarmin, confirmarGarmin, ajustesIA,
+  cambiarDiaComida, verHistorial, verDia, buscarHist, filtrarHistTipo, filtrarHistRango, pintarHistorial });
 
 // Arranque: mostrar candado (login o registro)
 iniciarSeguridad();
