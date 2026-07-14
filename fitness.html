@@ -196,9 +196,66 @@
     color:#fff; padding:11px 18px; border-radius:12px; font-size:13.5px; font-weight:600; z-index:200;
     opacity:0; transition:.3s; pointer-events:none; box-shadow:var(--sombra-md);}
   .toast.show{opacity:1; transform:translateX(-50%) translateY(-6px);}
+
+  /* Candado / login */
+  .candado{position:fixed; inset:0; z-index:120; background:linear-gradient(160deg,var(--teal),var(--teal-osc));
+    display:flex; align-items:center; justify-content:center; padding:18px; overflow-y:auto;}
+  .candado.oculto{display:none;}
+  .auth-card{background:#fff; border-radius:22px; box-shadow:0 20px 60px rgba(0,0,0,.35); width:100%; max-width:400px; padding:26px 24px; margin:auto;}
+  .auth-logo{text-align:center; font-size:44px; margin-bottom:2px;}
+  .auth-card h2{text-align:center; font-size:22px; margin-bottom:4px;}
+  .auth-sub{text-align:center; color:var(--sub); font-size:13.5px; margin-bottom:18px;}
+  .auth-error{background:var(--rojo-cl); border:1px solid #fca5a5; color:#8a1c14; padding:10px 12px; border-radius:11px; font-size:13px; margin-bottom:12px; display:none;}
+  .auth-error.show{display:block;}
+  .pista-box{background:var(--teal-cl); border:1px solid var(--teal-bd); color:#0f5c53; padding:10px 12px; border-radius:11px; font-size:13px; margin-bottom:12px;}
+  .auth-aviso{background:var(--amar-cl); border:1px solid #fde68a; color:#78560a; padding:10px 12px; border-radius:11px; font-size:12.5px; margin-top:14px;}
+  .ver-pass{font-size:12.5px; color:var(--sub); cursor:pointer; user-select:none; display:inline-flex; align-items:center; gap:6px; margin-top:6px;}
+  .ver-pass input{width:auto;}
+  .fuerza{height:6px; border-radius:4px; background:var(--gris-cl); margin-top:8px; overflow:hidden;}
+  .fuerza > div{height:100%; width:0; transition:.2s; border-radius:4px;}
+  .fuerza-txt{font-size:11.5px; color:var(--sub); margin-top:4px; min-height:14px;}
+  .auth-link{text-align:center; margin-top:14px; font-size:13px;}
+  .auth-link button{background:none; border:none; color:var(--teal-osc); cursor:pointer; text-decoration:underline; font-size:13px;}
+  .mantener{display:flex; align-items:center; gap:8px; font-size:13px; color:var(--sub); margin:4px 0 12px; cursor:pointer;}
+  .mantener input{width:auto;}
 </style>
 </head>
 <body>
+
+<!-- ══════════ CANDADO / ACCESO ══════════ -->
+<div class="candado" id="candado">
+  <div class="auth-card">
+    <div class="auth-logo">💪🔒</div>
+    <h2>FitCoach</h2>
+    <div class="auth-sub" id="authSub">Cargando…</div>
+    <div class="auth-error" id="authError"></div>
+
+    <!-- Registro -->
+    <form id="formRegistro" style="display:none;">
+      <div class="campo"><label>Usuario</label><input id="regUsuario" autocomplete="username" placeholder="Tu nombre de usuario"></div>
+      <div class="campo"><label>Contraseña</label><input id="regPass" type="password" autocomplete="new-password" placeholder="Mínimo 8 caracteres">
+        <div class="fuerza"><div id="fuerzaBar"></div></div><div class="fuerza-txt" id="fuerzaTxt"></div>
+        <label class="ver-pass"><input type="checkbox" id="regVer"> Ver contraseña</label></div>
+      <div class="campo"><label>Repetir contraseña</label><input id="regPass2" type="password" autocomplete="new-password" placeholder="Repite tu contraseña"></div>
+      <div class="campo"><label>Pista (opcional)</label><input id="regHint" placeholder="Algo que solo tú entiendas"></div>
+      <label class="mantener"><input type="checkbox" id="regMantener" checked> Mantener sesión iniciada en este dispositivo</label>
+      <button class="btn btn-primary btn-block" id="btnRegistro" type="submit">Crear cuenta segura</button>
+      <div class="auth-aviso">🔒 Tus datos se cifran en tu dispositivo. Si olvidas la contraseña <b>no se pueden recuperar</b> (por seguridad).</div>
+      <div class="auth-link"><button type="button" id="irLogin">Ya tengo una cuenta</button></div>
+    </form>
+
+    <!-- Login -->
+    <form id="formLogin" style="display:none;">
+      <div class="pista-box" id="pistaBox" style="display:none;"></div>
+      <div class="campo"><label>Usuario</label><input id="loginUsuario" autocomplete="username" placeholder="Tu usuario"></div>
+      <div class="campo"><label>Contraseña</label><input id="loginPass" type="password" autocomplete="current-password" placeholder="Tu contraseña">
+        <label class="ver-pass"><input type="checkbox" id="loginVer"> Ver contraseña</label></div>
+      <label class="mantener"><input type="checkbox" id="loginMantener" checked> Mantener sesión iniciada</label>
+      <button class="btn btn-primary btn-block" id="btnLogin" type="submit">Entrar</button>
+      <div class="auth-link"><button type="button" id="irBorrar">Olvidé mi contraseña / empezar de cero</button></div>
+    </form>
+  </div>
+</div>
 
 <!-- ══════════ ONBOARDING ══════════ -->
 <div class="onb" id="onb">
@@ -273,23 +330,128 @@ function toast(msg){ const t=$('#toast'); t.textContent=msg; t.classList.add('sh
 function nombreDia(iso){ return new Date(iso+'T12:00').toLocaleDateString('es',{weekday:'long', day:'numeric', month:'long'}); }
 function diasEntre(a,b){ return Math.round((new Date(b)-new Date(a))/86400000); }
 
-/* ---------- Persistencia ---------- */
-const DB = {
-  get(k, def){ try{ const v=localStorage.getItem('fit_'+k); return v?JSON.parse(v):def; }catch(e){ return def; } },
-  set(k, v){ localStorage.setItem('fit_'+k, JSON.stringify(v)); },
-  del(k){ localStorage.removeItem('fit_'+k); }
-};
+/* ══════════════════════════════════════════════════════════════
+   SEGURIDAD: login + cifrado AES-256-GCM (clave por PBKDF2)
+   Mismo modelo que la app de finanzas. Datos ilegibles sin la clave.
+   ══════════════════════════════════════════════════════════════ */
+const VAULT_KEY="fitcoach_vault_v1", SESSION_KEY="fitcoach_sesion_v1";
+const ITERACIONES=250000, CHECK_TOKEN="FITCOACH_OK", INACTIVIDAD_MS=30*60*1000;
+const subtle=(window.crypto&&window.crypto.subtle)?window.crypto.subtle:null;
+const txtEnc=new TextEncoder(), txtDec=new TextDecoder();
+function b64(buf){ let s=""; const b=new Uint8Array(buf); for(let i=0;i<b.length;i++) s+=String.fromCharCode(b[i]); return btoa(s); }
+function deB64(str){ return Uint8Array.from(atob(str),c=>c.charCodeAt(0)); }
+function escapar(s){ return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+async function derivarLlave(p,salt){ const base=await subtle.importKey("raw",txtEnc.encode(p),"PBKDF2",false,["deriveKey"]);
+  return subtle.deriveKey({name:"PBKDF2",salt,iterations:ITERACIONES,hash:"SHA-256"},base,{name:"AES-GCM",length:256},true,["encrypt","decrypt"]); }
+async function guardarSesion(key){ try{ const raw=await subtle.exportKey("raw",key); localStorage.setItem(SESSION_KEY,b64(raw)); }catch(e){} }
+function haySesion(){ return !!localStorage.getItem(SESSION_KEY); }
+function borrarSesion(){ localStorage.removeItem(SESSION_KEY); }
+async function cargarSesion(){ const s=localStorage.getItem(SESSION_KEY); if(!s) return null;
+  try{ return await subtle.importKey("raw",deB64(s),{name:"AES-GCM",length:256},true,["encrypt","decrypt"]); }catch(e){ return null; } }
+async function cifrar(key,obj){ const iv=crypto.getRandomValues(new Uint8Array(12));
+  const ct=await subtle.encrypt({name:"AES-GCM",iv},key,txtEnc.encode(JSON.stringify(obj))); return {iv:b64(iv),ct:b64(ct)}; }
+async function descifrar(key,blob){ const pt=await subtle.decrypt({name:"AES-GCM",iv:deB64(blob.iv)},key,deB64(blob.ct)); return JSON.parse(txtDec.decode(pt)); }
+function leerVault(){ try{ const r=localStorage.getItem(VAULT_KEY); return r?JSON.parse(r):null; }catch(e){ return null; } }
+function mostrarErr(m){ const el=$('#authError'); el.textContent=m; el.classList.add('show'); }
+function limpiarErr(){ const el=$('#authError'); el.textContent=''; el.classList.remove('show'); }
 
-let estado = {
-  perfil: DB.get('perfil', null),
-  comidas: DB.get('comidas', []),        // {id,fecha,tipo,nombre,gramos,kcal,prot,carb,grasa}
-  frecuentes: DB.get('frecuentes', []),  // {id,nombre,kcal,prot,carb,grasa,base:'porcion'|'100g'}
-  actividad: DB.get('actividad', []),    // {id,fecha,nombre,minutos,kcal}
-  peso: DB.get('peso', []),              // {fecha,kg}
-  medidas: DB.get('medidas', []),        // {fecha,...cm}
-  cumplidos: DB.get('cumplidos', {}),    // {fecha:true/false}
+let cryptoKey=null, vault=null, estado=null;
+function estadoNuevo(){ return { perfil:null, comidas:[], frecuentes:[], actividad:[], peso:[], medidas:[], cumplidos:{} }; }
+
+/* Persistencia cifrada del estado completo */
+let persistChain=Promise.resolve();
+function persist(){ persistChain=persistChain.then(async()=>{ if(!cryptoKey||!vault||!estado) return;
+  vault.data=await cifrar(cryptoKey,estado); localStorage.setItem(VAULT_KEY,JSON.stringify(vault)); }).catch(e=>console.error(e)); }
+function guardar(_k){ persist(); }   // guarda todo el vault cifrado (la clave es informativa)
+
+/* --- Formularios de acceso --- */
+function iniciarSeguridad(){
+  if(!subtle){ $('#authSub').textContent=''; mostrarErr("Tu navegador no permite el cifrado seguro. Ábrela con Chrome, Edge o Safari desde un enlace https."); return; }
+  vault=leerVault();
+  if(vault){
+    (async()=>{
+      const k=await cargarSesion();
+      if(k){ try{ estado=await descifrar(k,vault.data); cryptoKey=k; entrarApp(); return; }catch(e){ borrarSesion(); } }
+      mostrarLogin();
+    })();
+  } else { mostrarRegistro(); }
+}
+function mostrarRegistro(){
+  $('#formLogin').style.display='none'; $('#formRegistro').style.display='block';
+  $('#authSub').textContent='Crea tu cuenta para proteger tus datos de salud.';
+  $('#regUsuario').focus();
+}
+function mostrarLogin(){
+  $('#formRegistro').style.display='none'; $('#formLogin').style.display='block';
+  $('#authSub').textContent='Ingresa con tu usuario y contraseña.';
+  const pb=$('#pistaBox');
+  if(vault.hint){ pb.style.display='block'; pb.innerHTML='💡 <b>Pista:</b> '+escapar(vault.hint); } else pb.style.display='none';
+  if(vault.usuario){ $('#loginUsuario').value=vault.usuario; $('#loginPass').focus(); } else $('#loginUsuario').focus();
+}
+$('#irLogin').onclick=()=>{ limpiarErr(); if(vault) mostrarLogin(); else { mostrarErr('Aún no hay ninguna cuenta creada.'); } };
+$('#irBorrar').onclick=()=>{
+  if(confirm("La contraseña no se puede recuperar porque los datos están cifrados.\n\n¿Borrar todo y empezar de cero? No se puede deshacer.")){
+    localStorage.removeItem(VAULT_KEY); borrarSesion(); location.reload(); }
 };
-function guardar(k){ DB.set(k, estado[k]); }
+$('#loginVer').onchange=e=>{ $('#loginPass').type=e.target.checked?'text':'password'; };
+$('#regVer').onchange=e=>{ const t=e.target.checked?'text':'password'; $('#regPass').type=t; $('#regPass2').type=t; };
+function fuerzaPass(p){ let s=0; if(p.length>=8)s++; if(p.length>=12)s++; if(/[a-z]/.test(p)&&/[A-Z]/.test(p))s++; if(/\d/.test(p))s++; if(/[^A-Za-z0-9]/.test(p))s++; return Math.min(s,4); }
+$('#regPass').oninput=e=>{
+  const niv=[["",""],["Muy débil","#dc2626"],["Débil","#ea580c"],["Aceptable","#ca8a04"],["Fuerte","#16a34a"]];
+  const f=fuerzaPass(e.target.value), bar=$('#fuerzaBar');
+  bar.style.width=(f*25)+'%'; bar.style.background=niv[f][1]||'#eee';
+  $('#fuerzaTxt').textContent=e.target.value?('Seguridad: '+niv[f][0]):'';
+};
+$('#formRegistro').onsubmit=async e=>{
+  e.preventDefault(); limpiarErr();
+  const usuario=$('#regUsuario').value.trim(), p1=$('#regPass').value, p2=$('#regPass2').value, hint=$('#regHint').value.trim();
+  if(!usuario){ mostrarErr('Escribe un nombre de usuario.'); return; }
+  if(p1.length<8){ mostrarErr('La contraseña debe tener al menos 8 caracteres.'); return; }
+  if(p1!==p2){ mostrarErr('Las contraseñas no coinciden.'); return; }
+  const btn=$('#btnRegistro'); btn.disabled=true; btn.textContent='Cifrando…';
+  try{
+    const salt=crypto.getRandomValues(new Uint8Array(16)); const key=await derivarLlave(p1,salt);
+    estado=estadoNuevo();
+    vault={ v:1, usuario, hint, salt:b64(salt), iter:ITERACIONES, check:await cifrar(key,CHECK_TOKEN), data:await cifrar(key,estado) };
+    localStorage.setItem(VAULT_KEY,JSON.stringify(vault)); cryptoKey=key;
+    if($('#regMantener').checked) await guardarSesion(key); else borrarSesion();
+    entrarApp();
+  }catch(ex){ mostrarErr('No se pudo crear la cuenta: '+ex.message); }
+  finally{ btn.disabled=false; btn.textContent='Crear cuenta segura'; }
+};
+$('#formLogin').onsubmit=async e=>{
+  e.preventDefault(); limpiarErr();
+  const usuario=$('#loginUsuario').value.trim(), pass=$('#loginPass').value;
+  if(!pass){ mostrarErr('Escribe tu contraseña.'); return; }
+  const btn=$('#btnLogin'); btn.disabled=true; btn.textContent='Verificando…';
+  try{
+    const key=await derivarLlave(pass,deB64(vault.salt)); let ok=false;
+    try{ ok=(await descifrar(key,vault.check))===CHECK_TOKEN; }catch(_){ ok=false; }
+    if(!ok || (vault.usuario && usuario && usuario!==vault.usuario)){ mostrarErr('Usuario o contraseña incorrectos.'); return; }
+    cryptoKey=key; estado=await descifrar(key,vault.data);
+    if($('#loginMantener').checked) await guardarSesion(key); else borrarSesion();
+    $('#loginPass').value=''; entrarApp();
+  }catch(ex){ mostrarErr('No se pudo entrar: '+ex.message); }
+  finally{ btn.disabled=false; btn.textContent='Entrar'; }
+};
+function entrarApp(){
+  limpiarErr();
+  $('#candado').classList.add('oculto');
+  if(estado.perfil){
+    $('#onb').classList.add('oculto'); $('#app').style.display='block'; iniciarApp();
+  } else {
+    $('#app').style.display='none'; $('#onb').classList.remove('oculto');
+    onbDatos.nombre=vault.usuario||''; onbIdx=0; renderOnb();
+  }
+  registrarInactividad();
+}
+function bloquear(){ cryptoKey=null; estado=null;
+  $('#app').style.display='none'; $('#onb').classList.add('oculto');
+  $('#candado').classList.remove('oculto'); $('#loginPass').value=''; iniciarSeguridad(); }
+/* Auto-bloqueo por inactividad (solo si NO mantienes sesión) */
+let ultAct=Date.now(); function registrarInactividad(){ ultAct=Date.now(); }
+["click","keydown","mousemove","touchstart"].forEach(ev=>document.addEventListener(ev,registrarInactividad,{passive:true}));
+setInterval(()=>{ if(cryptoKey&&!haySesion()&&Date.now()-ultAct>INACTIVIDAD_MS) bloquear(); },30000);
 
 /* ---------- Base de alimentos (por 100 g salvo indicado) ---------- */
 /* k=kcal, p=proteína, c=carbohidrato, g=grasa (en 100 g) */
@@ -1227,8 +1389,9 @@ $('#btnMenu').onclick = ()=>{
     <button class="btn btn-ghost btn-block" onclick="exportarDatos()" style="margin-bottom:10px;">💾 Exportar datos (respaldo)</button>
     <button class="btn btn-ghost btn-block" onclick="document.getElementById('fileImport').click()" style="margin-bottom:10px;">📂 Importar datos</button>
     <input type="file" id="fileImport" accept=".json" style="display:none;" onchange="importarDatos(event)">
+    <button class="btn btn-ghost btn-block" onclick="cerrarSesion()" style="margin-bottom:10px;">🔒 Cerrar sesión</button>
     <button class="btn btn-danger btn-block" onclick="borrarTodo()">🗑️ Borrar todos mis datos</button>
-    <p class="muted" style="text-align:center; margin-top:14px;">🔒 Todos tus datos se guardan solo en este dispositivo.</p>
+    <p class="muted" style="text-align:center; margin-top:14px;">🔒 Tus datos están cifrados con tu contraseña y solo se guardan en este dispositivo.</p>
   `);
 };
 
@@ -1296,9 +1459,10 @@ function borrarTodo(){
     <button class="btn btn-ghost btn-block" onclick="cerrarModal()">Cancelar</button>`);
 }
 function confirmarBorrarTodo(){
-  ['perfil','comidas','frecuentes','actividad','peso','medidas','cumplidos'].forEach(k=>DB.del(k));
+  localStorage.removeItem(VAULT_KEY); borrarSesion();
   location.reload();
 }
+function cerrarSesion(){ cerrarModal(); borrarSesion(); bloquear(); }
 
 /* ══════════════════════════════════════════════════════════════
    ARRANQUE
@@ -1319,17 +1483,10 @@ Object.assign(window, { irA, abrirAgregarComida, abrirAgregarActividad, elegirAl
   borrarComida, borrarFrecuente, confirmarActividad, borrarActividad, prevActividad,
   abrirPeso, confirmarPeso, borrarPeso, abrirMedidas, confirmarMedidas, borrarMedida,
   editarPerfil, guardarPerfil, exportarDatos, importarDatos, borrarTodo, confirmarBorrarTodo,
-  cerrarModal });
+  cerrarSesion, cerrarModal });
 
-// ¿Perfil existe?
-if(estado.perfil){
-  $('#onb').classList.add('oculto');
-  $('#app').style.display='block';
-  iniciarApp();
-} else {
-  onbDatos.nombre = '';
-  renderOnb();
-}
+// Arranque: mostrar candado (login o registro)
+iniciarSeguridad();
 </script>
 </body>
 </html>

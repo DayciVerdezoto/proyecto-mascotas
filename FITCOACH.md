@@ -9,6 +9,19 @@ Funciona como un reemplazo de un entrenador especializado en **nutrición,
 deportología y acondicionamiento físico**: te entrevista, arma tu perfil y crea
 un plan real, factible y con metas alcanzables.
 
+## 🔒 Seguridad
+
+Pensada para poder publicarse en un enlace público **sin exponer tus datos de salud**:
+
+- **Acceso con usuario y contraseña** que tú creas la primera vez.
+- La contraseña **nunca se guarda**. Con ella se **deriva una llave** usando
+  **PBKDF2 (SHA-256, 250.000 iteraciones)**.
+- Tus datos se guardan **cifrados con AES-256-GCM**. Sin tu contraseña son
+  **ilegibles**, aunque alguien abra el archivo o el enlace.
+- **Auto-bloqueo** tras 30 minutos de inactividad y opción de **cerrar sesión**.
+- Si olvidas la contraseña **no hay recuperación** (ese es justamente el punto):
+  solo puedes empezar de cero.
+
 ## ✨ Qué hace
 
 - **Onboarding tipo entrevista**: te pregunta sexo, edad, altura, pesos,
