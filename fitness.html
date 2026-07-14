@@ -356,7 +356,8 @@ function mostrarErr(m){ const el=$('#authError'); el.textContent=m; el.classList
 function limpiarErr(){ const el=$('#authError'); el.textContent=''; el.classList.remove('show'); }
 
 let cryptoKey=null, vault=null, estado=null;
-function estadoNuevo(){ return { perfil:null, comidas:[], frecuentes:[], actividad:[], peso:[], medidas:[], cumplidos:{} }; }
+function estadoNuevo(){ return { perfil:null, comidas:[], frecuentes:[], actividad:[], peso:[], medidas:[], cumplidos:{}, config:{} }; }
+function cfg(){ if(!estado.config) estado.config={}; return estado.config; }
 
 /* Persistencia cifrada del estado completo */
 let persistChain=Promise.resolve();
@@ -827,6 +828,13 @@ function renderHoy(){
       <div class="semaforo ${sem.c}" style="border-radius:0; margin:0;"><span class="ico">${sem.i}</span><span class="txt">${sem.t}</span></div>
     </div>
 
+    ${(()=>{ const co=coachDelDia(); return `
+    <div class="card">
+      <h3><span class="em">🧠</span> Coach del día</h3>
+      <div class="semaforo ${co.tono}"><span class="ico">${co.ico}</span><span class="txt"><b>${co.titulo}.</b> ${co.texto}</span></div>
+      ${co.consejos.length?`<div style="margin-top:10px;">${co.consejos.map(c=>`<div class="item" style="border:none; padding:6px 0;"><div class="info"><div class="s" style="font-size:13.5px; color:var(--texto);">${c}</div></div></div>`).join('')}</div>`:''}
+    </div>`; })()}
+
     <div class="fila" style="margin-bottom:14px;">
       <button class="btn btn-primary" onclick="irA('comidas'); setTimeout(abrirAgregarComida,50)">🍽️ Comida</button>
       <button class="btn btn-naranja" onclick="irA('actividad'); setTimeout(abrirAgregarActividad,50)">🏃 Actividad</button>
@@ -894,6 +902,7 @@ function abrirAgregarComida(){
       <div class="chips" id="mTipo">
         ${TIPOS_COMIDA.map((t,i)=>`<div class="chip ${i===0?'sel':''}" data-v="${t.id}">${t.e} ${t.n}</div>`).join('')}
       </div></div>
+    <button class="btn btn-indigo btn-block" onclick="abrirFoto(window._tipoComida())" style="margin-bottom:14px;">📷 Analizar con foto (IA)</button>
     <div class="campo"><label>Buscar alimento</label>
       <input id="mBuscar" placeholder="Ej: pollo, arroz, huevo..." autocomplete="off"></div>
     <div class="resultados" id="mResultados"></div>
@@ -1003,6 +1012,271 @@ function borrarComida(id){ estado.comidas = estado.comidas.filter(x=>x.id!==id);
 function borrarFrecuente(id){ estado.frecuentes = estado.frecuentes.filter(x=>x.id!==id); guardar('frecuentes'); render(); }
 
 /* ══════════════════════════════════════════════════════════════
+   FOTO DE COMIDA → MACROS CON IA (Claude vision, clave del usuario)
+   ══════════════════════════════════════════════════════════════ */
+const IA_MODELO = 'claude-opus-4-8';
+const IA_SCHEMA = {
+  type:'object', additionalProperties:false,
+  required:['plato','alimentos','total','confianza','nota'],
+  properties:{
+    plato:{ type:'string' },
+    alimentos:{ type:'array', items:{ type:'object', additionalProperties:false,
+      required:['nombre','gramos','kcal','prot','carb','grasa'],
+      properties:{ nombre:{type:'string'}, gramos:{type:'number'}, kcal:{type:'number'},
+        prot:{type:'number'}, carb:{type:'number'}, grasa:{type:'number'} } } },
+    total:{ type:'object', additionalProperties:false, required:['kcal','prot','carb','grasa'],
+      properties:{ kcal:{type:'number'}, prot:{type:'number'}, carb:{type:'number'}, grasa:{type:'number'} } },
+    confianza:{ type:'string', enum:['alta','media','baja'] },
+    nota:{ type:'string' }
+  }
+};
+const IA_PROMPT = `Eres un nutricionista experto. Analiza esta foto de comida y estima sus valores nutricionales.
+Identifica cada alimento visible, estima el peso en gramos de cada porción y calcula sus calorías y macros.
+Sé realista con los tamaños de porción según lo que se ve en la foto. Suma un total.
+Indica tu nivel de confianza (alta/media/baja) y una nota breve en español (ej: "Ración estimada, confirma el aceite").
+Responde SOLO con el objeto pedido, en español.`;
+
+/* Redimensiona/comprime la imagen a JPEG base64 (máx ~1024px) */
+function comprimirImagen(file, maxLado){
+  return new Promise((resolve,reject)=>{
+    const img = new Image();
+    img.onload = ()=>{
+      let {width:w, height:h} = img;
+      const esc = Math.min(1, maxLado/Math.max(w,h));
+      w = Math.round(w*esc); h = Math.round(h*esc);
+      const cv = document.createElement('canvas'); cv.width=w; cv.height=h;
+      cv.getContext('2d').drawImage(img,0,0,w,h);
+      const dataUrl = cv.toDataURL('image/jpeg', 0.72);
+      resolve(dataUrl.split(',')[1]); // solo base64
+    };
+    img.onerror = reject;
+    const r = new FileReader(); r.onload = e=>img.src=e.target.result; r.onerror=reject; r.readAsDataURL(file);
+  });
+}
+
+async function analizarFotoIA(base64jpeg){
+  const key = (cfg().apiKeyIA||'').trim();
+  if(!key) throw new Error('SIN_CLAVE');
+  const body = {
+    model: IA_MODELO, max_tokens: 1024,
+    messages: [{ role:'user', content:[
+      { type:'image', source:{ type:'base64', media_type:'image/jpeg', data:base64jpeg } },
+      { type:'text', text: IA_PROMPT }
+    ]}],
+    output_config: { format: { type:'json_schema', schema: IA_SCHEMA } }
+  };
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method:'POST',
+    headers:{ 'content-type':'application/json', 'x-api-key':key,
+      'anthropic-version':'2023-06-01', 'anthropic-dangerous-direct-browser-access':'true' },
+    body: JSON.stringify(body)
+  });
+  if(!res.ok){
+    let msg = 'Error '+res.status;
+    if(res.status===401) msg='Clave de IA inválida. Revísala en ⚙️ Ajustes.';
+    else if(res.status===429) msg='Límite de uso alcanzado. Intenta más tarde.';
+    else if(res.status===400) msg='La imagen no se pudo procesar. Prueba otra foto.';
+    throw new Error(msg);
+  }
+  const data = await res.json();
+  const txt = (data.content||[]).find(b=>b.type==='text');
+  if(!txt) throw new Error('Respuesta vacía de la IA.');
+  return JSON.parse(txt.text);
+}
+
+/* Abre el flujo de foto */
+function abrirFoto(tipo){
+  const inp = document.createElement('input');
+  inp.type='file'; inp.accept='image/*'; inp.capture='environment';
+  inp.onchange = async ev=>{
+    const file = ev.target.files[0]; if(!file) return;
+    if(!(cfg().apiKeyIA||'').trim()){ pedirClaveIA(tipo, file); return; }
+    procesarFoto(file, tipo);
+  };
+  inp.click();
+}
+async function procesarFoto(file, tipo){
+  abrirModal(`<h3>📷 Analizando foto…</h3>
+    <div style="text-align:center; padding:20px;">
+      <div class="onb-emoji">🤖</div>
+      <p class="muted">La IA está identificando los alimentos y calculando las calorías y macros. Unos segundos…</p>
+    </div>`);
+  try{
+    const b64 = await comprimirImagen(file, 1024);
+    const r = await analizarFotoIA(b64);
+    mostrarResultadoFoto(r, tipo);
+  }catch(e){
+    if(e.message==='SIN_CLAVE'){ pedirClaveIA(tipo, file); return; }
+    abrirModal(`<h3>😕 No se pudo analizar</h3><p class="muted">${e.message}</p>
+      <button class="btn btn-ghost btn-block" onclick="comidaManual()" style="margin-top:10px;">✏️ Ingresar manualmente</button>`);
+  }
+}
+let fotoTemp = null;
+function mostrarResultadoFoto(r, tipo){
+  fotoTemp = { r, tipo };
+  const t = r.total||{kcal:0,prot:0,carb:0,grasa:0};
+  const badge = {alta:'pill-teal',media:'pill-naranja',baja:'pill-naranja'}[r.confianza]||'pill-naranja';
+  abrirModal(`
+    <h3>🍽️ ${r.plato||'Comida detectada'} <span class="pill ${badge}" style="margin-left:6px;">confianza ${r.confianza}</span></h3>
+    ${r.nota?`<p class="muted" style="margin-bottom:10px;">💡 ${r.nota}</p>`:''}
+    <div class="card" style="box-shadow:none; background:var(--gris-cl); padding:12px; margin-bottom:12px;">
+      ${(r.alimentos||[]).map(a=>`<div class="item" style="padding:7px 0;">
+        <div class="info"><div class="n">${a.nombre}</div><div class="s">${fmt(a.gramos)} g · P ${fmt(a.prot,1)} · C ${fmt(a.carb,1)} · G ${fmt(a.grasa,1)}</div></div>
+        <div class="val">${fmt(a.kcal)}</div></div>`).join('')}
+    </div>
+    <div class="kpis" style="margin-bottom:12px;">
+      <div class="kpi"><div class="l">🔥 Calorías</div><div class="v">${fmt(t.kcal)}<span class="u"> kcal</span></div></div>
+      <div class="kpi"><div class="l">💪 Proteína</div><div class="v">${fmt(t.prot)}<span class="u"> g</span></div></div>
+      <div class="kpi"><div class="l">🍚 Carbos</div><div class="v">${fmt(t.carb)}<span class="u"> g</span></div></div>
+      <div class="kpi"><div class="l">🥑 Grasas</div><div class="v">${fmt(t.grasa)}<span class="u"> g</span></div></div>
+    </div>
+    <p class="muted" style="margin-bottom:10px;">Son estimaciones de la IA — ajústalas si conoces las porciones reales.</p>
+    <div class="fila">
+      <button class="btn btn-ghost" onclick="editarResultadoFoto()">✏️ Ajustar</button>
+      <button class="btn btn-primary" onclick="guardarResultadoFoto()">Agregar al día</button>
+    </div>
+  `);
+}
+function guardarResultadoFoto(){
+  if(!fotoTemp) return;
+  const { r, tipo } = fotoTemp; const t = r.total||{};
+  estado.comidas.push({ id:uid(), fecha:hoyISO(), tipo, nombre:(r.plato||'Comida (foto)'), gramos:null,
+    kcal:Math.round(t.kcal||0), prot:Math.round(t.prot||0), carb:Math.round(t.carb||0), grasa:Math.round(t.grasa||0), ia:true });
+  guardar('comidas'); cerrarModal(); render(); toast('Comida agregada 📷✅');
+}
+function editarResultadoFoto(){
+  if(!fotoTemp) return;
+  const { r, tipo } = fotoTemp; const t = r.total||{};
+  abrirModal(`
+    <h3>✏️ Ajustar valores</h3>
+    <div class="campo"><label>Nombre</label><input id="cmN" value="${(r.plato||'Comida').replace(/"/g,'&quot;')}"></div>
+    <div class="fila">
+      <div class="campo"><label>Calorías</label><input id="cmK" type="number" inputmode="numeric" value="${Math.round(t.kcal||0)}"></div>
+      <div class="campo"><label>Proteína (g)</label><input id="cmP" type="number" inputmode="decimal" value="${Math.round(t.prot||0)}"></div>
+    </div>
+    <div class="fila">
+      <div class="campo"><label>Carbos (g)</label><input id="cmC" type="number" inputmode="decimal" value="${Math.round(t.carb||0)}"></div>
+      <div class="campo"><label>Grasas (g)</label><input id="cmG" type="number" inputmode="decimal" value="${Math.round(t.grasa||0)}"></div>
+    </div>
+    <input type="hidden" id="cmTipoFoto" value="${tipo}">
+    <button class="btn btn-primary btn-block" onclick="guardarFotoEditada()">Agregar al día</button>
+  `);
+}
+function guardarFotoEditada(){
+  const nombre = $('#cmN').value.trim()||'Comida (foto)';
+  estado.comidas.push({ id:uid(), fecha:hoyISO(), tipo:$('#cmTipoFoto').value, nombre, gramos:null,
+    kcal:+$('#cmK').value||0, prot:+$('#cmP').value||0, carb:+$('#cmC').value||0, grasa:+$('#cmG').value||0, ia:true });
+  guardar('comidas'); cerrarModal(); render(); toast('Comida agregada ✅');
+}
+function pedirClaveIA(tipo, file){
+  abrirModal(`
+    <h3>🤖 Activar análisis con IA</h3>
+    <p class="muted" style="margin-bottom:12px;">Para leer las macros desde una foto, la app usa la IA de Claude con <b>tu propia clave</b>. Cuesta ~1–3 centavos por foto (pagas tu propio uso) y la clave se guarda <b>cifrada solo en tu dispositivo</b>.</p>
+    <div class="campo"><label>Clave de API de Anthropic</label>
+      <input id="iaKey" placeholder="sk-ant-..." autocomplete="off"></div>
+    <p class="muted" style="margin-bottom:12px;">¿No tienes clave? Créala gratis en <b>console.anthropic.com</b> → API Keys.</p>
+    <button class="btn btn-primary btn-block" onclick="guardarClaveIA('${tipo||''}')">Guardar y analizar</button>
+    <button class="btn btn-ghost btn-block" onclick="comidaManual()" style="margin-top:8px;">Prefiero ingresar manualmente</button>
+  `);
+  window._fotoPend = file || null;
+}
+function guardarClaveIA(tipo){
+  const k = $('#iaKey').value.trim();
+  if(!k){ toast('Pega tu clave'); return; }
+  cfg().apiKeyIA = k; guardar('config');
+  if(window._fotoPend){ const f=window._fotoPend; window._fotoPend=null; procesarFoto(f, tipo||TIPOS_COMIDA[0].id); }
+  else { cerrarModal(); toast('Clave guardada 🤖'); }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   COACH DEL DÍA: analiza y sugiere ajustes para cerrar objetivos
+   ══════════════════════════════════════════════════════════════ */
+function comidasRestantesHoy(){
+  const c = estado.comidas.filter(x=>x.fecha===hoyISO());
+  const principales = ['desayuno','almuerzo','cena'];
+  const hechas = new Set(c.map(x=>x.tipo));
+  const objetivo = estado.perfil.comidasDia||3;
+  // Comidas principales aún no registradas
+  let restantes = principales.filter(p=>!hechas.has(p)).length;
+  // Ajusta a las comidas que el usuario planea (si planea 2, no exijas 3)
+  restantes = Math.min(restantes, Math.max(0, objetivo - hechas.size));
+  return Math.max(restantes, 0);
+}
+function coachDelDia(){
+  const m = calcMetricas(estado.perfil);
+  const t = totalesDia(hoyISO());
+  const metaAj = m.metaKcal + t.ejercicio;
+  const restKcal = metaAj - t.kcal;
+  const restProt = m.prot - t.prot;
+  const comidasLeft = comidasRestantesHoy();
+  const ganar = estado.perfil.objetivo==='ganar';
+  const consejos = [];
+
+  if(t.kcal===0){
+    return { tono:'sem-info', ico:'🍽️', titulo:'Empieza a registrar',
+      texto:`Tu meta de hoy es <b>${fmt(metaAj)} kcal</b> y <b>${fmt(m.prot)}g de proteína</b>. Registra tu primera comida (o toma una foto) y te iré guiando para cerrar el día en objetivo.`, consejos:[] };
+  }
+
+  // Reparto sugerido entre las comidas que faltan
+  if(comidasLeft>0){
+    const porComidaK = Math.max(0, Math.round(restKcal/comidasLeft));
+    const porComidaP = Math.max(0, Math.round(restProt/comidasLeft));
+    consejos.push(`🍽️ Te quedan <b>${comidasLeft}</b> comida(s) y <b>${fmt(restKcal)} kcal</b>. Apunta a ~<b>${fmt(porComidaK)} kcal</b> y ~<b>${fmt(porComidaP)}g de proteína</b> en cada una.`);
+  }
+
+  // Proteína
+  if(restProt > 15) consejos.push(`💪 Vas <b>${fmt(restProt)}g</b> por debajo de tu proteína. Suma una fuente magra (pollo, atún, huevos, yogur griego o un scoop de proteína).`);
+  else if(restProt <= 0) consejos.push(`💪 ¡Proteína cumplida! (${fmt(t.prot)}/${fmt(m.prot)}g). Excelente para cuidar tu músculo.`);
+
+  // Estado calórico → tono + sugerencia de ajuste
+  let tono, ico, titulo, texto;
+  if(!ganar && restKcal < 0){
+    // pasado del objetivo (déficit/recomp)
+    tono='sem-bad'; ico='⚠️'; titulo='Te pasaste del objetivo';
+    if(comidasLeft>0){
+      const bajar = Math.round(-restKcal/comidasLeft);
+      texto=`Vas <b>${fmt(-restKcal)} kcal</b> por encima de tu meta. Para cerrar en objetivo, baja ~<b>${fmt(bajar)} kcal</b> en cada comida restante (raciones más chicas, menos aceite/carbos).`;
+    } else {
+      const min = Math.round(-restKcal/60*10)/10;
+      texto=`Vas <b>${fmt(-restKcal)} kcal</b> por encima y ya no quedan comidas. Compénsalo hoy con <b>~${fmt(-restKcal)} kcal de ejercicio</b> (p. ej. ${fmt(Math.max(20,Math.round(-restKcal/6)))} min de caminata rápida) o simplemente retómalo mañana — un día no rompe el progreso.`;
+    }
+  } else if(ganar && restKcal > 200 && comidasLeft===0){
+    tono='sem-warn'; ico='🍽️'; titulo='Te falta para tu superávit';
+    texto=`Te faltan <b>${fmt(restKcal)} kcal</b> para tu meta de crecimiento y ya no quedan comidas planificadas. Suma un snack calórico y proteico (frutos secos, mantequilla de maní, batido).`;
+  } else if(restKcal <= (ganar?200:250) && restKcal >= (ganar?-50:-100)){
+    tono='sem-ok'; ico='✅'; titulo='¡Vas perfecto!';
+    texto=`Estás muy cerca de tu meta del día (${fmt(t.kcal)}/${fmt(metaAj)} kcal). ${restProt>15?'Solo cuida completar la proteína.':'Mantén el ritmo y cierra así.'}`;
+  } else {
+    tono='sem-info'; ico='🎯'; titulo='Vas en camino';
+    texto=`Llevas <b>${fmt(t.kcal)}</b> de <b>${fmt(metaAj)} kcal</b>. Te quedan <b>${fmt(restKcal)} kcal</b> para tu objetivo de hoy.`;
+  }
+  return { tono, ico, titulo, texto, consejos };
+}
+
+/* ══════════════════════════════════════════════════════════════
+   ENTRADA RÁPIDA GARMIN / RELOJ (calorías activas)
+   ══════════════════════════════════════════════════════════════ */
+function abrirGarmin(){
+  abrirModal(`
+    <h3>⌚ Calorías activas del reloj</h3>
+    <p class="muted" style="margin-bottom:12px;">Mira en tu Garmin (o cualquier reloj) las <b>calorías activas</b> de hoy y anótalas aquí. Se sumarán a tu gasto por ejercicio.</p>
+    <div class="campo"><label>Calorías activas de hoy (kcal)</label>
+      <input id="gcal" type="number" inputmode="numeric" placeholder="ej: 450" autofocus></div>
+    <div class="campo"><label>Pasos (opcional)</label>
+      <input id="gpasos" type="number" inputmode="numeric" placeholder="ej: 8000"></div>
+    <button class="btn btn-naranja btn-block" onclick="confirmarGarmin()">Guardar</button>
+  `);
+}
+function confirmarGarmin(){
+  const kcal = +$('#gcal').value||0; const pasos = +$('#gpasos').value||0;
+  if(kcal<=0){ toast('Ingresa las calorías activas'); return; }
+  // reemplaza el registro del reloj de hoy si ya existía
+  estado.actividad = estado.actividad.filter(x=>!(x.fecha===hoyISO() && x.reloj));
+  estado.actividad.push({ id:uid(), fecha:hoyISO(), nombre:'Actividad (reloj/Garmin)'+(pasos?` · ${fmt(pasos)} pasos`:''), minutos:0, kcal, reloj:true });
+  guardar('actividad'); cerrarModal(); render(); toast('Calorías del reloj guardadas ⌚');
+}
+
+/* ══════════════════════════════════════════════════════════════
    PANTALLA: ACTIVIDAD
    ══════════════════════════════════════════════════════════════ */
 function renderActividad(){
@@ -1017,7 +1291,8 @@ function renderActividad(){
       <div class="kpi"><div class="l">🔥 Quemado hoy</div><div class="v">${fmt(totalHoy)}<span class="u"> kcal</span></div></div>
       <div class="kpi"><div class="l">📅 Esta semana</div><div class="v">${fmt(totalSem)}<span class="u"> kcal</span></div></div>
     </div>
-    <button class="btn btn-naranja btn-block" onclick="abrirAgregarActividad()" style="margin-bottom:14px;">➕ Registrar actividad</button>
+    <button class="btn btn-naranja btn-block" onclick="abrirAgregarActividad()" style="margin-bottom:10px;">➕ Registrar actividad</button>
+    <button class="btn btn-ghost btn-block" onclick="abrirGarmin()" style="margin-bottom:14px;">⌚ Importar calorías del reloj / Garmin</button>
     <div class="card"><h3><span class="em">📋</span> Registros recientes</h3>`;
   const recientes = [...estado.actividad].sort((a,b)=>a.fecha<b.fecha?1:-1).slice(0,25);
   if(!recientes.length){ html += `<div class="vacio"><span class="em">🏃</span>Aún no registras actividad.<br>¡Empieza a moverte!</div>`; }
@@ -1386,6 +1661,7 @@ $('#btnMenu').onclick = ()=>{
       <div class="muted">${p.edad} años · ${fmt(p.altura)} cm · objetivo: ${({perder:'perder grasa',ganar:'ganar músculo',recomp:'recomposición'}[p.objetivo])}</div>
     </div>
     <button class="btn btn-ghost btn-block" onclick="editarPerfil()" style="margin-bottom:10px;">✏️ Editar perfil y metas</button>
+    <button class="btn btn-ghost btn-block" onclick="ajustesIA()" style="margin-bottom:10px;">🤖 Análisis de fotos con IA</button>
 
     <div class="card" style="box-shadow:none; background:var(--teal-cl); margin-bottom:12px; padding:14px;">
       <h3 style="margin-bottom:6px;"><span class="em">☁️</span> Copia de seguridad en la nube</h3>
@@ -1511,6 +1787,18 @@ function confirmarBorrarTodo(){
   location.reload();
 }
 function cerrarSesion(){ cerrarModal(); borrarSesion(); bloquear(); }
+function ajustesIA(){
+  const tiene = !!(cfg().apiKeyIA||'').trim();
+  abrirModal(`
+    <h3>🤖 Análisis de fotos con IA</h3>
+    <p class="muted" style="margin-bottom:12px;">Con tu clave de <b>Anthropic (Claude)</b>, la app analiza una foto de tu comida y estima las calorías y macros. Cuesta ~1–3 centavos por foto (tú pagas tu uso). La clave se guarda <b>cifrada solo en este dispositivo</b>.</p>
+    <div class="campo"><label>Clave de API ${tiene?'(guardada ✅)':''}</label>
+      <input id="iaKeyCfg" placeholder="sk-ant-..." value="${(cfg().apiKeyIA||'').replace(/"/g,'&quot;')}" autocomplete="off"></div>
+    <p class="muted" style="margin-bottom:12px;">Consíguela gratis en <b>console.anthropic.com</b> → API Keys.</p>
+    <button class="btn btn-primary btn-block" onclick="cfg().apiKeyIA=document.getElementById('iaKeyCfg').value.trim(); guardar('config'); cerrarModal(); toast('Guardado 🤖');">Guardar</button>
+    ${tiene?`<button class="btn btn-danger btn-block" onclick="cfg().apiKeyIA=''; guardar('config'); cerrarModal(); toast('Clave eliminada');" style="margin-top:8px;">Quitar clave</button>`:''}
+  `);
+}
 
 /* ══════════════════════════════════════════════════════════════
    ARRANQUE
@@ -1531,7 +1819,9 @@ Object.assign(window, { irA, abrirAgregarComida, abrirAgregarActividad, elegirAl
   borrarComida, borrarFrecuente, confirmarActividad, borrarActividad, prevActividad,
   abrirPeso, confirmarPeso, borrarPeso, abrirMedidas, confirmarMedidas, borrarMedida,
   editarPerfil, guardarPerfil, respaldarDrive, descargarRespaldo, importarRespaldo, borrarTodo, confirmarBorrarTodo,
-  cerrarSesion, cerrarModal });
+  cerrarSesion, cerrarModal, cfg, guardar,
+  abrirFoto, guardarResultadoFoto, editarResultadoFoto, guardarFotoEditada, pedirClaveIA, guardarClaveIA,
+  abrirGarmin, confirmarGarmin, ajustesIA });
 
 // Arranque: mostrar candado (login o registro)
 iniciarSeguridad();
