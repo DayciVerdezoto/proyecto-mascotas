@@ -356,8 +356,12 @@ function mostrarErr(m){ const el=$('#authError'); el.textContent=m; el.classList
 function limpiarErr(){ const el=$('#authError'); el.textContent=''; el.classList.remove('show'); }
 
 let cryptoKey=null, vault=null, estado=null;
-function estadoNuevo(){ return { perfil:null, comidas:[], frecuentes:[], actividad:[], peso:[], medidas:[], cumplidos:{}, config:{} }; }
+function estadoNuevo(){ return { perfil:null, comidas:[], frecuentes:[], plantillas:[], actividad:[], peso:[], medidas:[], cumplidos:{}, config:{} }; }
 function cfg(){ if(!estado.config) estado.config={}; return estado.config; }
+function plantillas(){ if(!estado.plantillas) estado.plantillas=[]; return estado.plantillas; }
+function tipoNombre(id){ const t=TIPOS_COMIDA.find(x=>x.id===id); return t?t.n:id; }
+function tipoEmoji(id){ const t=TIPOS_COMIDA.find(x=>x.id===id); return t?t.e:'🍽️'; }
+function tipoPorHora(){ const h=new Date().getHours(); return h<11?'desayuno':h<16?'almuerzo':h<21?'cena':'snack'; }
 
 /* Persistencia cifrada del estado completo */
 let persistChain=Promise.resolve();
@@ -501,6 +505,105 @@ const ALIMENTOS = [
   {n:"Chocolate/dulce", k:535, p:8, c:59, g:30, e:"🍫"},
   {n:"Gaseosa/refresco", k:42, p:0, c:11, g:0, e:"🥤"},
   {n:"Cerveza", k:43, p:0.5, c:3.6, g:0, e:"🍺"},
+  /* --- Carnes y proteínas --- */
+  {n:"Pavo (pechuga)", k:135, p:29, c:0, g:1, e:"🦃"},
+  {n:"Bistec de res", k:217, p:26, c:0, g:12, e:"🥩"},
+  {n:"Carne molida 80/20", k:254, p:17, c:0, g:20, e:"🥩"},
+  {n:"Costilla de cerdo", k:277, p:23, c:0, g:20, e:"🍖"},
+  {n:"Chuleta de cerdo", k:231, p:27, c:0, g:13, e:"🍖"},
+  {n:"Tocino / bacon", k:541, p:37, c:1.4, g:42, e:"🥓"},
+  {n:"Jamón", k:145, p:18, c:1.5, g:7, e:"🍖"},
+  {n:"Salchicha / hot dog", k:301, p:12, c:2, g:27, e:"🌭"},
+  {n:"Chorizo", k:455, p:24, c:2, g:38, e:"🌭"},
+  {n:"Camarón", k:99, p:24, c:0.2, g:0.3, e:"🦐"},
+  {n:"Sardinas", k:208, p:25, c:0, g:11, e:"🐟"},
+  {n:"Nuggets de pollo", k:296, p:15, c:16, g:19, e:"🍗"},
+  {n:"Milanesa de pollo", k:270, p:20, c:15, g:14, e:"🍗"},
+  /* --- Huevos y lácteos --- */
+  {n:"Huevo frito", k:196, p:14, c:0.8, g:15, e:"🍳"},
+  {n:"Queso mozzarella", k:280, p:22, c:2.2, g:22, e:"🧀"},
+  {n:"Queso parmesano", k:431, p:38, c:4, g:29, e:"🧀"},
+  {n:"Requesón / cottage", k:98, p:11, c:3.4, g:4.3, e:"🧀"},
+  {n:"Yogur natural", k:61, p:3.5, c:4.7, g:3.3, e:"🥛"},
+  {n:"Yogur de sabores", k:95, p:3.5, c:15, g:2.5, e:"🥛"},
+  {n:"Mantequilla", k:717, p:0.9, c:0.1, g:81, e:"🧈"},
+  {n:"Crema de leche", k:292, p:2.8, c:3.4, g:29, e:"🥛"},
+  {n:"Helado", k:207, p:3.5, c:24, g:11, e:"🍨"},
+  /* --- Panes, cereales y carbohidratos --- */
+  {n:"Pan francés / baguette", k:270, p:9, c:52, g:2, e:"🥖"},
+  {n:"Tortilla de maíz", k:218, p:5.7, c:45, g:2.9, e:"🫓"},
+  {n:"Tortilla de harina", k:304, p:8, c:49, g:8, e:"🫓"},
+  {n:"Arepa", k:275, p:5, c:52, g:6, e:"🫓"},
+  {n:"Fideos / pasta (seca)", k:371, p:13, c:75, g:1.5, e:"🍝"},
+  {n:"Cereal (hojuelas)", k:357, p:7, c:84, g:0.4, e:"🥣"},
+  {n:"Granola", k:471, p:10, c:64, g:20, e:"🥣"},
+  {n:"Galletas dulces", k:480, p:6, c:65, g:22, e:"🍪"},
+  {n:"Galletas saladas", k:439, p:9, c:70, g:13, e:"🍘"},
+  {n:"Papas fritas", k:312, p:3.4, c:41, g:15, e:"🍟"},
+  {n:"Puré de papa", k:88, p:2, c:14, g:3, e:"🥔"},
+  {n:"Yuca / mandioca (cocida)", k:160, p:1.4, c:38, g:0.3, e:"🥔"},
+  {n:"Patacón / plátano frito", k:230, p:1.5, c:38, g:8, e:"🍌"},
+  {n:"Choclo / maíz", k:96, p:3.4, c:21, g:1.5, e:"🌽"},
+  {n:"Avena (cocida)", k:71, p:2.5, c:12, g:1.5, e:"🥣"},
+  /* --- Legumbres y vegetales con proteína --- */
+  {n:"Habas (cocidas)", k:110, p:8, c:19, g:0.4, e:"🫘"},
+  {n:"Arvejas / guisantes", k:81, p:5, c:14, g:0.4, e:"🫛"},
+  {n:"Frijol refrito", k:145, p:8, c:19, g:4, e:"🫘"},
+  {n:"Tofu", k:76, p:8, c:1.9, g:4.8, e:"🧊"},
+  /* --- Frutas --- */
+  {n:"Uvas", k:69, p:0.7, c:18, g:0.2, e:"🍇"},
+  {n:"Piña", k:50, p:0.5, c:13, g:0.1, e:"🍍"},
+  {n:"Mango", k:60, p:0.8, c:15, g:0.4, e:"🥭"},
+  {n:"Papaya", k:43, p:0.5, c:11, g:0.3, e:"🍈"},
+  {n:"Sandía", k:30, p:0.6, c:8, g:0.2, e:"🍉"},
+  {n:"Melón", k:34, p:0.8, c:8, g:0.2, e:"🍈"},
+  {n:"Pera", k:57, p:0.4, c:15, g:0.1, e:"🍐"},
+  {n:"Durazno", k:39, p:0.9, c:10, g:0.3, e:"🍑"},
+  {n:"Mandarina", k:53, p:0.8, c:13, g:0.3, e:"🍊"},
+  {n:"Kiwi", k:61, p:1.1, c:15, g:0.5, e:"🥝"},
+  {n:"Arándanos", k:57, p:0.7, c:14, g:0.3, e:"🫐"},
+  {n:"Pasas", k:299, p:3, c:79, g:0.5, e:"🍇"},
+  /* --- Verduras --- */
+  {n:"Pepino", k:15, p:0.7, c:3.6, g:0.1, e:"🥒"},
+  {n:"Pimiento", k:31, p:1, c:6, g:0.3, e:"🫑"},
+  {n:"Cebolla", k:40, p:1.1, c:9, g:0.1, e:"🧅"},
+  {n:"Champiñones", k:22, p:3.1, c:3.3, g:0.3, e:"🍄"},
+  {n:"Coliflor", k:25, p:1.9, c:5, g:0.3, e:"🥦"},
+  {n:"Calabacín / zapallo", k:17, p:1.2, c:3.1, g:0.3, e:"🥒"},
+  {n:"Berenjena", k:25, p:1, c:6, g:0.2, e:"🍆"},
+  {n:"Apio", k:16, p:0.7, c:3, g:0.2, e:"🥬"},
+  /* --- Grasas, frutos secos y semillas --- */
+  {n:"Aceite vegetal", k:884, p:0, c:0, g:100, e:"🛢️"},
+  {n:"Maní / cacahuate", k:567, p:26, c:16, g:49, e:"🥜"},
+  {n:"Semillas de chía", k:486, p:17, c:42, g:31, e:"🌱"},
+  {n:"Aceitunas", k:115, p:0.8, c:6, g:11, e:"🫒"},
+  {n:"Coco", k:354, p:3.3, c:15, g:33, e:"🥥"},
+  {n:"Mayonesa", k:680, p:1, c:0.6, g:75, e:"🥚"},
+  /* --- Platos preparados y comida rápida --- */
+  {n:"Pizza", k:266, p:11, c:33, g:10, e:"🍕"},
+  {n:"Hamburguesa", k:250, p:15, c:19, g:13, e:"🍔"},
+  {n:"Empanada", k:290, p:8, c:28, g:16, e:"🥟"},
+  {n:"Tamal", k:200, p:5, c:25, g:9, e:"🫔"},
+  {n:"Ceviche", k:100, p:15, c:6, g:1.5, e:"🐟"},
+  {n:"Sushi (roll)", k:150, p:6, c:28, g:2, e:"🍣"},
+  {n:"Sopa / caldo de pollo", k:40, p:3, c:3, g:1.5, e:"🍲"},
+  {n:"Arroz con pollo", k:180, p:9, c:22, g:6, e:"🍛"},
+  {n:"Ensalada César", k:180, p:6, c:8, g:14, e:"🥗"},
+  {n:"Sándwich jamón y queso", k:250, p:12, c:28, g:10, e:"🥪"},
+  {n:"Tacos", k:220, p:9, c:20, g:11, e:"🌮"},
+  /* --- Bebidas, snacks y condimentos --- */
+  {n:"Jugo de naranja", k:45, p:0.7, c:10, g:0.2, e:"🧃"},
+  {n:"Jugo envasado", k:54, p:0.2, c:13, g:0.1, e:"🧃"},
+  {n:"Café con leche", k:55, p:3, c:5, g:2.5, e:"☕"},
+  {n:"Café negro", k:2, p:0.1, c:0, g:0, e:"☕"},
+  {n:"Papitas / chips", k:536, p:7, c:53, g:34, e:"🥔"},
+  {n:"Palomitas", k:387, p:12, c:78, g:4, e:"🍿"},
+  {n:"Barra de cereal", k:400, p:6, c:70, g:10, e:"🍫"},
+  {n:"Miel", k:304, p:0.3, c:82, g:0, e:"🍯"},
+  {n:"Azúcar", k:387, p:0, c:100, g:0, e:"🍬"},
+  {n:"Mermelada", k:250, p:0.4, c:65, g:0.1, e:"🍓"},
+  {n:"Ketchup", k:101, p:1.2, c:24, g:0.1, e:"🍅"},
+  {n:"Vino", k:83, p:0.1, c:2.6, g:0, e:"🍷"},
 ];
 
 const ACTIVIDADES = [
@@ -883,9 +986,7 @@ function renderComidas(){
       <button class="btn-icono" style="background:var(--gris-cl); color:var(--texto); ${esHoy?'opacity:.25; pointer-events:none;':''}" onclick="cambiarDiaComida(1)">›</button>
     </div>
 
-    ${esHoy
-      ? `<button class="btn btn-primary btn-block" onclick="abrirAgregarComida()" style="margin-bottom:10px;">➕ Agregar comida</button>`
-      : `<button class="btn btn-ghost btn-block" onclick="cambiarDiaComida('hoy')" style="margin-bottom:10px;">↩︎ Volver a hoy</button>`}
+    ${esHoy?'':`<button class="btn btn-ghost btn-block" onclick="cambiarDiaComida('hoy')" style="margin-bottom:10px;">↩︎ Volver a hoy</button>`}
     <button class="btn btn-indigo btn-block" onclick="verHistorial()" style="margin-bottom:14px;">🔎 Historial y análisis</button>`;
 
   if(esHoy && pendientes.length){
@@ -905,9 +1006,26 @@ function renderComidas(){
         <button class="del" onclick="borrarComida('${x.id}')">🗑️</button>
       </div>`;
     });
+    html += `<div style="display:flex; gap:8px; margin-top:6px; flex-wrap:wrap;">
+      <button class="btn btn-ghost btn-sm" onclick="abrirBorrador('${tc.id}')">➕ Agregar</button>
+      ${items.length?`<button class="btn btn-ghost btn-sm" onclick="duplicarComida('${tc.id}')">⧉ Duplicar</button>`:''}
+    </div>`;
     html += `</div>`;
   });
   html += `</div>`;
+
+  if(plantillas().length){
+    html += `<div class="card"><h3><span class="em">⭐</span> Mis comidas guardadas</h3><p class="muted" style="margin:-4px 0 8px;">Repite tus comidas de siempre con 1 toque.</p>`;
+    plantillas().forEach(p=>{ const tt=p.items.reduce((s,x)=>s+x.kcal,0);
+      html += `<div class="item">
+        <div class="ico" style="background:var(--teal-cl)">${tipoEmoji(p.tipo)}</div>
+        <div class="info"><div class="n">${p.nombre}</div><div class="s">${tipoNombre(p.tipo)} · ${p.items.length} alimentos · ${fmt(tt)} kcal</div></div>
+        <button class="btn btn-primary btn-sm" onclick="registrarPlantillaDirecto('${p.id}')">+ Registrar</button>
+        <button class="del" onclick="borrarPlantilla('${p.id}')">🗑️</button>
+      </div>`;
+    });
+    html += `</div>`;
+  }
 
   if(esHoy && estado.frecuentes.length){
     html += `<div class="card"><h3><span class="em">⭐</span> Comidas frecuentes (registro rápido)</h3>`;
@@ -1004,43 +1122,133 @@ function pintarHistorial(){
 }
 
 let comidaTemp = null;
-function abrirAgregarComida(){
-  comidaTemp = null;
-  abrirModal(`
-    <h3>🍽️ Agregar comida</h3>
-    <div class="campo"><label>¿En qué comida?</label>
-      <div class="chips" id="mTipo">
-        ${TIPOS_COMIDA.map((t,i)=>`<div class="chip ${i===0?'sel':''}" data-v="${t.id}">${t.e} ${t.n}</div>`).join('')}
-      </div></div>
-    <button class="btn btn-indigo btn-block" onclick="abrirFoto(window._tipoComida())" style="margin-bottom:14px;">📷 Analizar con foto (IA)</button>
-    <div class="campo"><label>Buscar alimento</label>
-      <input id="mBuscar" placeholder="Ej: pollo, arroz, huevo..." autocomplete="off"></div>
-    <div class="resultados" id="mResultados"></div>
-    <div class="divider"></div>
-    <div class="muted" style="text-align:center; margin-bottom:8px;">o ingresa manualmente</div>
-    <button class="btn btn-ghost btn-block" onclick="comidaManual()">✏️ Entrada manual</button>
-  `);
-  let tipoSel = TIPOS_COMIDA[0].id;
-  chipSelect('#mTipo', v=>tipoSel=v);
-  const inp = $('#mBuscar');
-  const buscar = ()=>{
-    const q = inp.value.trim().toLowerCase();
-    const res = q ? ALIMENTOS.filter(a=>a.n.toLowerCase().includes(q)).slice(0,20) : ALIMENTOS.slice(0,20);
-    $('#mResultados').innerHTML = res.map((a,i)=>{
-      const idx = ALIMENTOS.indexOf(a);
-      return `<div class="res-item" onclick="elegirAlimento(${idx}, '${tipoSelGet()}')">
-        <div class="ico" style="background:var(--gris-cl); width:36px; height:36px; border-radius:9px; display:flex; align-items:center; justify-content:center;">${a.e||'🍴'}</div>
-        <div class="info"><div class="n">${a.n}</div><div class="s">${fmt(a.k)} kcal / 100g · P ${fmt(a.p)}</div></div>
-        <span style="color:var(--teal); font-weight:800;">+</span>
-      </div>`;
-    }).join('') || `<div class="muted" style="padding:10px;">Sin resultados. Usa entrada manual.</div>`;
-  };
-  window.tipoSelGet = ()=>tipoSel;
-  window._tipoComida = ()=>tipoSel;
-  inp.oninput = buscar;
-  buscar();
-  setTimeout(()=>inp.focus(), 100);
+/* abrirAgregarComida: abre el constructor con la comida sugerida por la hora */
+function abrirAgregarComida(){ abrirBorrador(); }
+
+/* ══════════════════════════════════════════════════════════════
+   CONSTRUCTOR DE COMIDA (borrador): agrega todos los componentes,
+   confirma una vez. Con plantillas guardadas y foto integrada.
+   ══════════════════════════════════════════════════════════════ */
+let borr = null; // { tipo, items:[] }
+function abrirBorrador(tipo, items){
+  borr = { tipo: tipo||tipoPorHora(), items: items? items.map(x=>({...x})) : [] };
+  renderBorrador();
 }
+function totalBorr(){ return borr.items.reduce((a,x)=>({kcal:a.kcal+(+x.kcal||0),prot:a.prot+(+x.prot||0),carb:a.carb+(+x.carb||0),grasa:a.grasa+(+x.grasa||0)}),{kcal:0,prot:0,carb:0,grasa:0}); }
+function renderBorrador(){
+  const tot=totalBorr(); const tn=tipoNombre(borr.tipo).toLowerCase();
+  const dest = comidasFecha && comidasFecha!==hoyISO() ? nombreDia(comidasFecha) : 'hoy';
+  abrirModal(`
+    <h3>${tipoEmoji(borr.tipo)} Armar ${tn}</h3>
+    <div class="chips" id="borrTipos" style="margin-bottom:10px;">
+      ${TIPOS_COMIDA.map(t=>`<div class="chip ${t.id===borr.tipo?'sel':''}" onclick="cambiarTipoBorr('${t.id}')">${t.e} ${t.n}</div>`).join('')}
+    </div>
+    <div id="borrItems"></div>
+    <div class="campo" style="margin:8px 0 6px;"><input id="borrBuscar" placeholder="🔎 Agrega alimentos (pollo, café, yogur, pan...)" oninput="buscarBorr(this.value)" autocomplete="off"></div>
+    <div class="resultados" id="borrRes"></div>
+    <div class="fila" style="margin-top:8px;">
+      <button class="btn btn-ghost btn-sm" onclick="borrManual()">✏️ Manual</button>
+      <button class="btn btn-ghost btn-sm" onclick="borrPlantillas()">⭐ Mis comidas</button>
+      <button class="btn btn-indigo btn-sm" onclick="abrirFoto(borr.tipo)">📷 Foto</button>
+    </div>
+    <div class="divider"></div>
+    <div class="semaforo sem-info" style="margin-bottom:12px;"><span class="ico">🍽️</span><span class="txt"><b>${borr.items.length}</b> alimento(s) · <b>${fmt(tot.kcal)} kcal</b> · P ${fmt(tot.prot)}g · C ${fmt(tot.carb)}g · G ${fmt(tot.grasa)}g</span></div>
+    <button class="btn btn-primary btn-block" onclick="guardarBorr()" style="margin-bottom:8px; ${borr.items.length?'':'opacity:.45; pointer-events:none;'}">✅ Guardar ${tn} (${dest})</button>
+    ${borr.items.length?`<button class="btn btn-ghost btn-block" onclick="guardarComboComoPlantilla()">⭐ Guardar esta comida para repetirla</button>`:''}
+  `);
+  pintarBorrItems(); buscarBorr('');
+}
+function cambiarTipoBorr(t){ borr.tipo=t; renderBorrador(); }
+function pintarBorrItems(){
+  const cont=$('#borrItems'); if(!cont) return;
+  if(!borr.items.length){ cont.innerHTML=`<p class="muted">Agrega los componentes de tu ${tipoNombre(borr.tipo).toLowerCase()} y guárdalo todo junto.</p>`; return; }
+  cont.innerHTML = borr.items.map((x,i)=>`<div class="item">
+    <div class="info"><div class="n">${x.ia?'📷 ':''}${x.nombre}</div><div class="s">${x.gramos?fmt(x.gramos)+' g · ':''}P ${fmt(x.prot)} · C ${fmt(x.carb)} · G ${fmt(x.grasa)}</div></div>
+    <div class="val">${fmt(x.kcal)}</div>
+    <button class="del" onclick="quitarItemBorr(${i})">🗑️</button></div>`).join('');
+}
+function quitarItemBorr(i){ borr.items.splice(i,1); renderBorrador(); }
+function buscarBorr(q){
+  const cont=$('#borrRes'); if(!cont) return;
+  q=(q||'').trim().toLowerCase();
+  const res=q?ALIMENTOS.filter(a=>a.n.toLowerCase().includes(q)).slice(0,25):ALIMENTOS.slice(0,10);
+  cont.innerHTML=res.map(a=>{ const idx=ALIMENTOS.indexOf(a);
+    return `<div class="res-item" onclick="elegirBorr(${idx})"><div class="ico" style="background:var(--gris-cl); width:36px; height:36px; border-radius:9px; display:flex; align-items:center; justify-content:center;">${a.e||'🍴'}</div><div class="info"><div class="n">${a.n}</div><div class="s">${fmt(a.k)} kcal/100g · P ${fmt(a.p)}</div></div><span style="color:var(--teal); font-weight:800;">+</span></div>`;
+  }).join('')||`<div class="muted" style="padding:8px;">No está en el catálogo. Usa ✏️ Manual o 📷 Foto.</div>`;
+}
+function elegirBorr(idx){
+  const a=ALIMENTOS[idx]; const porc=a.porcion||100;
+  abrirModal(`
+    <h3>${a.e||'🍴'} ${a.n}</h3>
+    <p class="muted">Por 100 g: ${fmt(a.k)} kcal · P ${fmt(a.p)} · C ${fmt(a.c)} · G ${fmt(a.g)}</p>
+    <div class="campo"><label>Cantidad (gramos)</label><input id="bG" type="number" inputmode="decimal" value="${porc}" oninput="prevBorr(${idx})"></div>
+    <div class="kpis" id="bPrev"></div>
+    <div class="fila" style="margin-top:14px;">
+      <button class="btn btn-ghost" onclick="renderBorrador()">‹ Volver</button>
+      <button class="btn btn-primary" onclick="addBorr(${idx})">Agregar</button>
+    </div>`);
+  prevBorr(idx);
+}
+function prevBorr(idx){ const g=+$('#bG').value||0; const v=calcAlimento(idx,g);
+  $('#bPrev').innerHTML=`<div class="kpi"><div class="l">Calorías</div><div class="v">${fmt(v.kcal)}<span class="u"> kcal</span></div></div><div class="kpi"><div class="l">Proteína</div><div class="v">${fmt(v.prot,1)}<span class="u"> g</span></div></div>`; }
+function addBorr(idx){ const a=ALIMENTOS[idx]; const g=+$('#bG').value||0; if(g<=0){toast('Ingresa la cantidad');return;} borr.items.push({nombre:a.n,gramos:g,...calcAlimento(idx,g)}); renderBorrador(); }
+function borrManual(){
+  abrirModal(`
+    <h3>✏️ Alimento manual</h3>
+    <div class="campo"><label>Nombre</label><input id="bmN" placeholder="Ej: kéfir casero, jugo verde..."></div>
+    <div class="fila"><div class="campo"><label>Calorías</label><input id="bmK" type="number" inputmode="numeric"></div><div class="campo"><label>Proteína (g)</label><input id="bmP" type="number" inputmode="decimal"></div></div>
+    <div class="fila"><div class="campo"><label>Carbos (g)</label><input id="bmC" type="number" inputmode="decimal"></div><div class="campo"><label>Grasas (g)</label><input id="bmG" type="number" inputmode="decimal"></div></div>
+    <div class="fila" style="margin-top:6px;"><button class="btn btn-ghost" onclick="renderBorrador()">‹ Volver</button><button class="btn btn-primary" onclick="addBorrManual()">Agregar</button></div>`);
+}
+function addBorrManual(){ const n=$('#bmN').value.trim(); const k=+$('#bmK').value||0; if(!n||k<=0){toast('Pon nombre y calorías');return;} borr.items.push({nombre:n,gramos:null,kcal:k,prot:+$('#bmP').value||0,carb:+$('#bmC').value||0,grasa:+$('#bmG').value||0}); renderBorrador(); }
+function borrPlantillas(){
+  const ps=plantillas();
+  if(!ps.length){ toast('Aún no guardas comidas. Arma una y toca "Guardar para repetirla".'); return; }
+  abrirModal(`<h3>⭐ Mis comidas guardadas</h3>
+    <p class="muted" style="margin-bottom:10px;">Toca para agregar sus componentes a tu ${tipoNombre(borr.tipo).toLowerCase()}.</p>
+    ${ps.map(p=>{const tt=p.items.reduce((s,x)=>s+x.kcal,0);return `<div class="item"><div class="ico" style="background:var(--teal-cl)">${tipoEmoji(p.tipo)}</div><div class="info"><div class="n">${p.nombre}</div><div class="s">${p.items.length} alimentos · ${fmt(tt)} kcal</div></div><button class="btn btn-primary btn-sm" onclick="usarPlantillaBorr('${p.id}')">+ Agregar</button><button class="del" onclick="borrarPlantilla('${p.id}', true)">🗑️</button></div>`;}).join('')}
+    <button class="btn btn-ghost btn-block" onclick="renderBorrador()" style="margin-top:10px;">‹ Volver</button>`);
+}
+function usarPlantillaBorr(id){ const p=plantillas().find(x=>x.id===id); if(!p)return; p.items.forEach(x=>borr.items.push({...x})); renderBorrador(); toast('Agregado: '+p.nombre); }
+function guardarBorr(){
+  if(!borr||!borr.items.length){ toast('Agrega al menos un alimento'); return; }
+  const destFecha = comidasFecha||hoyISO();
+  borr.items.forEach(x=>estado.comidas.push({ id:uid(), fecha:destFecha, tipo:borr.tipo, nombre:x.nombre, gramos:x.gramos??null, kcal:Math.round(x.kcal), prot:+(+x.prot).toFixed(1), carb:+(+x.carb).toFixed(1), grasa:+(+x.grasa).toFixed(1), ia:x.ia||undefined }));
+  guardar('comidas'); const n=borr.items.length; const tn=tipoNombre(borr.tipo).toLowerCase(); borr=null; cerrarModal(); render(); toast(`${tn} guardado · ${n} alimento${n!==1?'s':''} ✅`);
+}
+function guardarComboComoPlantilla(){
+  if(!borr||!borr.items.length){ toast('Agrega alimentos primero'); return; }
+  const nombre = prompt('Nombre para repetir esta comida (ej: "Mi desayuno", "Almuerzo pollo"):', 'Mi '+tipoNombre(borr.tipo).toLowerCase());
+  if(nombre===null) return;
+  plantillas().push({ id:uid(), nombre:(nombre.trim()||('Mi '+tipoNombre(borr.tipo))), tipo:borr.tipo,
+    items:borr.items.map(x=>({nombre:x.nombre,gramos:x.gramos??null,kcal:Math.round(x.kcal),prot:+(+x.prot).toFixed(1),carb:+(+x.carb).toFixed(1),grasa:+(+x.grasa).toFixed(1),ia:x.ia||undefined})) });
+  guardar('plantillas'); toast('Guardada ⭐ La repites con 1 toque'); renderBorrador();
+}
+function borrarPlantilla(id, volver){ estado.plantillas = plantillas().filter(x=>x.id!==id); guardar('plantillas'); if(volver&&borr) borrPlantillas(); else render(); }
+function registrarPlantillaDirecto(id){
+  const p=plantillas().find(x=>x.id===id); if(!p)return;
+  const destFecha=comidasFecha||hoyISO();
+  p.items.forEach(x=>estado.comidas.push({id:uid(),fecha:destFecha,tipo:p.tipo,nombre:x.nombre,gramos:x.gramos??null,kcal:Math.round(x.kcal),prot:+(+x.prot).toFixed(1),carb:+(+x.carb).toFixed(1),grasa:+(+x.grasa).toFixed(1),ia:x.ia||undefined}));
+  guardar('comidas'); render(); toast(`+ ${p.nombre} (${tipoNombre(p.tipo)}) ✅`);
+}
+/* Duplicar una comida ya registrada hacia otra comida del mismo día */
+function duplicarComida(tipoOrigen){
+  const destFecha=comidasFecha||hoyISO();
+  const items=estado.comidas.filter(x=>x.fecha===destFecha && x.tipo===tipoOrigen);
+  if(!items.length){ toast('Esa comida está vacía'); return; }
+  abrirModal(`<h3>⧉ Duplicar ${tipoNombre(tipoOrigen)}</h3>
+    <p class="muted" style="margin-bottom:10px;">Copia sus ${items.length} alimentos a otra comida del día (ej: cocinas lo mismo para almuerzo y cena):</p>
+    <div class="chips" style="flex-direction:column;">
+      ${TIPOS_COMIDA.filter(t=>t.id!==tipoOrigen).map(t=>`<div class="chip" onclick="confirmarDuplicar('${tipoOrigen}','${t.id}')">${t.e} ${t.n}</div>`).join('')}
+    </div>
+    <button class="btn btn-ghost btn-block" onclick="cerrarModal()" style="margin-top:10px;">Cancelar</button>`);
+}
+function confirmarDuplicar(origen, destinoTipo){
+  const destFecha=comidasFecha||hoyISO();
+  estado.comidas.filter(x=>x.fecha===destFecha && x.tipo===origen).forEach(x=>estado.comidas.push({id:uid(),fecha:destFecha,tipo:destinoTipo,nombre:x.nombre,gramos:x.gramos,kcal:x.kcal,prot:x.prot,carb:x.carb,grasa:x.grasa,ia:x.ia}));
+  guardar('comidas'); cerrarModal(); render(); toast(`Copiado a ${tipoNombre(destinoTipo)} ✅`);
+}
+function manualFallback(){ if(borr) borrManual(); else comidaManual(); }
 
 function elegirAlimento(idx, tipo){
   const a = ALIMENTOS[idx];
@@ -1164,16 +1372,17 @@ function comprimirImagen(file, maxLado){
   });
 }
 
-async function analizarFotoIA(base64jpeg){
+/* Llamada genérica a la IA de visión (Claude), reutilizable */
+async function iaVision(base64jpeg, schema, prompt){
   const key = (cfg().apiKeyIA||'').trim();
   if(!key) throw new Error('SIN_CLAVE');
   const body = {
     model: IA_MODELO, max_tokens: 1024,
     messages: [{ role:'user', content:[
       { type:'image', source:{ type:'base64', media_type:'image/jpeg', data:base64jpeg } },
-      { type:'text', text: IA_PROMPT }
+      { type:'text', text: prompt }
     ]}],
-    output_config: { format: { type:'json_schema', schema: IA_SCHEMA } }
+    output_config: { format: { type:'json_schema', schema } }
   };
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method:'POST',
@@ -1185,7 +1394,7 @@ async function analizarFotoIA(base64jpeg){
     let msg = 'Error '+res.status;
     if(res.status===401) msg='Clave de IA inválida. Revísala en ⚙️ Ajustes.';
     else if(res.status===429) msg='Límite de uso alcanzado. Intenta más tarde.';
-    else if(res.status===400) msg='La imagen no se pudo procesar. Prueba otra foto.';
+    else if(res.status===400) msg='La imagen no se pudo procesar. Prueba otra foto/captura.';
     throw new Error(msg);
   }
   const data = await res.json();
@@ -1193,6 +1402,22 @@ async function analizarFotoIA(base64jpeg){
   if(!txt) throw new Error('Respuesta vacía de la IA.');
   return JSON.parse(txt.text);
 }
+async function analizarFotoIA(base64jpeg){ return iaVision(base64jpeg, IA_SCHEMA, IA_PROMPT); }
+
+/* --- Actividad por captura de pantalla (Garmin/reloj/app) --- */
+const IA_ACT_SCHEMA = {
+  type:'object', additionalProperties:false, required:['actividades','nota'],
+  properties:{
+    actividades:{ type:'array', items:{ type:'object', additionalProperties:false, required:['nombre','kcal'],
+      properties:{ nombre:{type:'string'}, minutos:{type:'number'}, kcal:{type:'number'}, pasos:{type:'number'} } } },
+    nota:{ type:'string' }
+  }
+};
+const IA_ACT_PROMPT = `Esta es una captura de pantalla del resumen de actividad física de un reloj o app (Garmin Connect, Apple Watch, Fitbit, Samsung Health, etc.).
+Extrae las actividades/entrenamientos y sus CALORÍAS. Si solo hay un total de calorías activas del día, repórtalo como una actividad llamada "Actividad del día".
+Incluye la duración en minutos y los pasos si aparecen. No inventes datos que no estén en la imagen.
+Responde SOLO con el objeto pedido, en español.`;
+async function analizarActividadIA(b64){ return iaVision(b64, IA_ACT_SCHEMA, IA_ACT_PROMPT); }
 
 /* Abre el flujo de foto */
 function abrirFoto(tipo){
@@ -1218,7 +1443,7 @@ async function procesarFoto(file, tipo){
   }catch(e){
     if(e.message==='SIN_CLAVE'){ pedirClaveIA(tipo, file); return; }
     abrirModal(`<h3>😕 No se pudo analizar</h3><p class="muted">${e.message}</p>
-      <button class="btn btn-ghost btn-block" onclick="comidaManual()" style="margin-top:10px;">✏️ Ingresar manualmente</button>`);
+      <button class="btn btn-ghost btn-block" onclick="manualFallback()" style="margin-top:10px;">✏️ Ingresar manualmente</button>`);
   }
 }
 let fotoTemp = null;
@@ -1240,16 +1465,23 @@ function mostrarResultadoFoto(r, tipo){
       <div class="kpi"><div class="l">🍚 Carbos</div><div class="v">${fmt(t.carb)}<span class="u"> g</span></div></div>
       <div class="kpi"><div class="l">🥑 Grasas</div><div class="v">${fmt(t.grasa)}<span class="u"> g</span></div></div>
     </div>
-    <p class="muted" style="margin-bottom:10px;">Son estimaciones de la IA — ajústalas si conoces las porciones reales.</p>
+    <p class="muted" style="margin-bottom:10px;">Son estimaciones de la IA — podrás ajustarlas.</p>
     <div class="fila">
-      <button class="btn btn-ghost" onclick="editarResultadoFoto()">✏️ Ajustar</button>
-      <button class="btn btn-primary" onclick="guardarResultadoFoto()">Agregar al día</button>
+      ${borr
+        ? `<button class="btn btn-ghost" onclick="renderBorrador()">‹ Volver</button><button class="btn btn-primary" onclick="guardarResultadoFoto()">Agregar al ${tipoNombre(borr.tipo).toLowerCase()}</button>`
+        : `<button class="btn btn-ghost" onclick="editarResultadoFoto()">✏️ Ajustar</button><button class="btn btn-primary" onclick="guardarResultadoFoto()">Agregar al día</button>`}
     </div>
   `);
 }
 function guardarResultadoFoto(){
   if(!fotoTemp) return;
-  const { r, tipo } = fotoTemp; const t = r.total||{};
+  const { r, tipo } = fotoTemp;
+  if(borr){
+    const lista = (r.alimentos&&r.alimentos.length) ? r.alimentos : [{nombre:r.plato||'Comida (foto)', gramos:null, ...(r.total||{})}];
+    lista.forEach(a=>borr.items.push({ nombre:a.nombre, gramos:a.gramos??null, kcal:Math.round(a.kcal||0), prot:+(+a.prot||0).toFixed(1), carb:+(+a.carb||0).toFixed(1), grasa:+(+a.grasa||0).toFixed(1), ia:true }));
+    fotoTemp=null; renderBorrador(); toast('Alimentos agregados 📷'); return;
+  }
+  const t = r.total||{};
   estado.comidas.push({ id:uid(), fecha:hoyISO(), tipo, nombre:(r.plato||'Comida (foto)'), gramos:null,
     kcal:Math.round(t.kcal||0), prot:Math.round(t.prot||0), carb:Math.round(t.carb||0), grasa:Math.round(t.grasa||0), ia:true });
   guardar('comidas'); cerrarModal(); render(); toast('Comida agregada 📷✅');
@@ -1286,7 +1518,7 @@ function pedirClaveIA(tipo, file){
       <input id="iaKey" placeholder="sk-ant-..." autocomplete="off"></div>
     <p class="muted" style="margin-bottom:12px;">¿No tienes clave? Créala gratis en <b>console.anthropic.com</b> → API Keys.</p>
     <button class="btn btn-primary btn-block" onclick="guardarClaveIA('${tipo||''}')">Guardar y analizar</button>
-    <button class="btn btn-ghost btn-block" onclick="comidaManual()" style="margin-top:8px;">Prefiero ingresar manualmente</button>
+    <button class="btn btn-ghost btn-block" onclick="manualFallback()" style="margin-top:8px;">Prefiero ingresar manualmente</button>
   `);
   window._fotoPend = file || null;
 }
@@ -1386,6 +1618,56 @@ function confirmarGarmin(){
   guardar('actividad'); cerrarModal(); render(); toast('Calorías del reloj guardadas ⌚');
 }
 
+/* --- Foto/captura de actividad → IA lee y registra --- */
+function abrirFotoActividad(){
+  const inp=document.createElement('input'); inp.type='file'; inp.accept='image/*';
+  inp.onchange=async ev=>{ const file=ev.target.files[0]; if(!file)return;
+    if(!(cfg().apiKeyIA||'').trim()){ pedirClaveActividad(file); return; } procesarFotoActividad(file); };
+  inp.click();
+}
+async function procesarFotoActividad(file){
+  abrirModal(`<h3>📷 Leyendo tu actividad…</h3>
+    <div style="text-align:center; padding:20px;"><div class="onb-emoji">🤖</div>
+    <p class="muted">La IA está leyendo tu captura de Garmin/reloj y extrayendo calorías, duración y pasos. Unos segundos…</p></div>`);
+  try{ const b64=await comprimirImagen(file,1400); const r=await analizarActividadIA(b64); mostrarResultadoActividad(r); }
+  catch(e){ if(e.message==='SIN_CLAVE'){ pedirClaveActividad(file); return; }
+    abrirModal(`<h3>😕 No se pudo leer</h3><p class="muted">${e.message}</p>
+      <button class="btn btn-ghost btn-block" onclick="abrirGarmin()" style="margin-top:10px;">✏️ Ingresar a mano</button>`); }
+}
+let actTemp=null;
+function mostrarResultadoActividad(r){
+  actTemp=r;
+  const total=(r.actividades||[]).reduce((s,a)=>s+(+a.kcal||0),0);
+  abrirModal(`
+    <h3>⌚ Actividad detectada</h3>
+    ${r.nota?`<p class="muted" style="margin-bottom:10px;">💡 ${r.nota}</p>`:''}
+    <div class="card" style="box-shadow:none; background:var(--gris-cl); padding:12px; margin-bottom:12px;">
+      ${(r.actividades||[]).map(a=>`<div class="item" style="padding:7px 0;"><div class="info"><div class="n">${a.nombre}</div><div class="s">${a.minutos?fmt(a.minutos)+' min':''}${a.minutos&&a.pasos?' · ':''}${a.pasos?fmt(a.pasos)+' pasos':''}</div></div><div class="val" style="color:var(--naranja)">${fmt(a.kcal)} kcal</div></div>`).join('')||'<div class="muted">No se detectaron actividades en la captura.</div>'}
+    </div>
+    <div class="semaforo sem-info" style="margin-bottom:12px;"><span class="ico">🔥</span><span class="txt">Total detectado: <b>${fmt(total)} kcal</b></span></div>
+    <div class="fila">
+      <button class="btn btn-ghost" onclick="cerrarModal()">Cancelar</button>
+      <button class="btn btn-naranja" onclick="guardarResultadoActividad()">Registrar</button>
+    </div>`);
+}
+function guardarResultadoActividad(){
+  if(!actTemp) return; const acts=actTemp.actividades||[];
+  if(!acts.length){ toast('No se detectó actividad'); cerrarModal(); return; }
+  acts.forEach(a=>estado.actividad.push({ id:uid(), fecha:hoyISO(), nombre:(a.nombre||'Actividad')+(a.pasos?` · ${fmt(a.pasos)} pasos`:''), minutos:Math.round(a.minutos||0), kcal:Math.round(a.kcal||0), ia:true }));
+  guardar('actividad'); actTemp=null; cerrarModal(); render(); toast('Actividad registrada 📷⌚');
+}
+function pedirClaveActividad(file){
+  abrirModal(`<h3>🤖 Activar lectura con IA</h3>
+    <p class="muted" style="margin-bottom:12px;">Para leer tu captura de Garmin/reloj, la app usa la IA de Claude con <b>tu propia clave</b> (menos de 1 centavo por captura, guardada cifrada en tu dispositivo).</p>
+    <div class="campo"><label>Clave de API de Anthropic</label><input id="iaKeyA" placeholder="sk-ant-..." autocomplete="off"></div>
+    <p class="muted" style="margin-bottom:12px;">Créala gratis en <b>console.anthropic.com</b> → API Keys.</p>
+    <button class="btn btn-primary btn-block" onclick="guardarClaveActividad()">Guardar y leer</button>
+    <button class="btn btn-ghost btn-block" onclick="abrirGarmin()" style="margin-top:8px;">Prefiero ingresarlo a mano</button>`);
+  window._actPend=file||null;
+}
+function guardarClaveActividad(){ const k=$('#iaKeyA').value.trim(); if(!k){toast('Pega tu clave');return;}
+  cfg().apiKeyIA=k; guardar('config'); if(window._actPend){const f=window._actPend; window._actPend=null; procesarFotoActividad(f);} else {cerrarModal(); toast('Clave guardada 🤖');} }
+
 /* ══════════════════════════════════════════════════════════════
    PANTALLA: ACTIVIDAD
    ══════════════════════════════════════════════════════════════ */
@@ -1401,8 +1683,9 @@ function renderActividad(){
       <div class="kpi"><div class="l">🔥 Quemado hoy</div><div class="v">${fmt(totalHoy)}<span class="u"> kcal</span></div></div>
       <div class="kpi"><div class="l">📅 Esta semana</div><div class="v">${fmt(totalSem)}<span class="u"> kcal</span></div></div>
     </div>
-    <button class="btn btn-naranja btn-block" onclick="abrirAgregarActividad()" style="margin-bottom:10px;">➕ Registrar actividad</button>
-    <button class="btn btn-ghost btn-block" onclick="abrirGarmin()" style="margin-bottom:14px;">⌚ Importar calorías del reloj / Garmin</button>
+    <button class="btn btn-indigo btn-block" onclick="abrirFotoActividad()" style="margin-bottom:10px;">📷 Leer captura de Garmin/reloj (IA)</button>
+    <button class="btn btn-naranja btn-block" onclick="abrirAgregarActividad()" style="margin-bottom:10px;">➕ Registrar actividad manual</button>
+    <button class="btn btn-ghost btn-block" onclick="abrirGarmin()" style="margin-bottom:14px;">⌚ Ingresar calorías del reloj a mano</button>
     <div class="card"><h3><span class="em">📋</span> Registros recientes</h3>`;
   const recientes = [...estado.actividad].sort((a,b)=>a.fecha<b.fecha?1:-1).slice(0,25);
   if(!recientes.length){ html += `<div class="vacio"><span class="em">🏃</span>Aún no registras actividad.<br>¡Empieza a moverte!</div>`; }
@@ -1932,7 +2215,11 @@ Object.assign(window, { irA, abrirAgregarComida, abrirAgregarActividad, elegirAl
   cerrarSesion, cerrarModal, cfg, guardar,
   abrirFoto, guardarResultadoFoto, editarResultadoFoto, guardarFotoEditada, pedirClaveIA, guardarClaveIA,
   abrirGarmin, confirmarGarmin, ajustesIA,
-  cambiarDiaComida, verHistorial, verDia, buscarHist, filtrarHistTipo, filtrarHistRango, pintarHistorial });
+  cambiarDiaComida, verHistorial, verDia, buscarHist, filtrarHistTipo, filtrarHistRango, pintarHistorial,
+  abrirBorrador, renderBorrador, cambiarTipoBorr, quitarItemBorr, buscarBorr, elegirBorr, prevBorr, addBorr,
+  borrManual, addBorrManual, borrPlantillas, usarPlantillaBorr, guardarBorr, guardarComboComoPlantilla,
+  borrarPlantilla, registrarPlantillaDirecto, duplicarComida, confirmarDuplicar, manualFallback,
+  abrirFotoActividad, guardarResultadoActividad, guardarClaveActividad });
 
 // Arranque: mostrar candado (login o registro)
 iniciarSeguridad();

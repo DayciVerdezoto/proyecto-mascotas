@@ -34,8 +34,13 @@ Pensada para poder publicarse en un enlace público **sin exponer tus datos de s
   - **Ejercicio** con tablas de **METs** por actividad.
   - **TDEE** (gasto total) y **meta calórica** según objetivo y ritmo.
   - **Macros** objetivo (proteína alta para conservar/ganar músculo).
-- **Registro de comidas**: base de alimentos con calorías y macros + tus
-  **comidas frecuentes** guardadas para registro en 1 toque + entrada manual.
+- **Registro por comida (constructor)**: entras a "Desayuno" (o almuerzo/cena/
+  snack), agregas **todos sus componentes** y confirmas **una sola vez**. Base
+  de **~130 alimentos** con calorías y macros + entrada manual.
+- **Mis comidas guardadas (plantillas)**: guarda una combinación (ej. "Mi
+  desayuno": huevos + café + kéfir) y **repítela con 1 toque**.
+- **Duplicar comida**: copia una comida a otra (ej. cocinas lo mismo para
+  almuerzo y cena → duplicas con 1 toque).
 - **📅 Historial por día**: navega entre días y ve qué comidas ya registraste
   y cuáles quedan **pendientes** (desayuno/almuerzo/cena).
 - **🔎 Búsqueda y análisis**: busca por alimento, filtra por tipo de comida y
@@ -50,9 +55,10 @@ Pensada para poder publicarse en un enlace público **sin exponer tus datos de s
   para esta comida y las siguientes, de modo que cierres el día cumpliendo
   tus objetivos de calorías y proteína.
 - **Registro de actividad física** y cálculo de quema calórica.
-- **⌚ Importar calorías del reloj / Garmin**: anota las calorías activas de
-  tu reloj y se suman a tu gasto (el reloj no se conecta directo por límites
-  de Garmin; se ingresan en segundos).
+- **⌚ Actividad por captura (Garmin/reloj/apps)**: sube una captura de
+  pantalla de tu resumen de actividad y la IA **lee las calorías, duración y
+  pasos** y los registra — igual que la foto de comida. También puedes ingresar
+  las calorías activas a mano.
 - **Tablero "Hoy"**: anillo de calorías (consumido vs. meta vs. ejercicio),
   macros y semáforo de cumplimiento diario.
 - **Curva de peso**: gráfica de tendencia + progreso hacia tu meta.
