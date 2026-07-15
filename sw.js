@@ -5,7 +5,7 @@
    - Recursos estáticos (íconos, manifest): cache-first con actualización.
    Cambia CACHE_VERSION al publicar cambios para renovar la caché.
 */
-const CACHE_VERSION = "finzen-v2";
+const CACHE_VERSION = "finzen-v3";
 const APP_SHELL = [
   "./",
   "./index.html",
