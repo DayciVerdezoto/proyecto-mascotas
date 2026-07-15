@@ -4,6 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="theme-color" content="#0d9488">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="FitCoach">
 <title>FitCoach — Tu entrenador de bolsillo</title>
 <style>
   :root{
@@ -2203,7 +2209,18 @@ function iniciarApp(){
   const dt = new Date();
   $('#fechaHoy').textContent = dt.toLocaleDateString('es',{weekday:'long', day:'numeric', month:'long'});
   irA('hoy');
+  if(!cfg().consentOK) setTimeout(mostrarConsentimiento, 450);
 }
+function mostrarConsentimiento(){
+  abrirModal(`
+    <div class="onb-emoji">🩺</div>
+    <h3 style="text-align:center;">Antes de empezar</h3>
+    <p class="muted" style="margin-bottom:12px;">FitCoach es una <b>herramienta de orientación y seguimiento</b> nutricional y de actividad. Sus cálculos y sugerencias son <b>estimaciones educativas</b> y <b>no reemplazan</b> la valoración de un profesional de salud, especialmente si tienes alguna condición médica, embarazo o tomas medicación.</p>
+    <p class="muted" style="margin-bottom:14px;">Tus datos se guardan <b>cifrados en tu dispositivo</b>. Tú decides cuándo respaldarlos.</p>
+    <button class="btn btn-primary btn-block" onclick="aceptarConsentimiento()">Entiendo y acepto</button>
+  `);
+}
+function aceptarConsentimiento(){ cfg().consentOK=true; guardar('config'); cerrarModal(); }
 window.addEventListener('resize', ()=>{ if(['peso','medidas'].includes(pantallaActual)) render(); });
 
 // Exponer funciones usadas en onclick inline
@@ -2219,7 +2236,8 @@ Object.assign(window, { irA, abrirAgregarComida, abrirAgregarActividad, elegirAl
   abrirBorrador, renderBorrador, cambiarTipoBorr, quitarItemBorr, buscarBorr, elegirBorr, prevBorr, addBorr,
   borrManual, addBorrManual, borrPlantillas, usarPlantillaBorr, guardarBorr, guardarComboComoPlantilla,
   borrarPlantilla, registrarPlantillaDirecto, duplicarComida, confirmarDuplicar, manualFallback,
-  abrirFotoActividad, guardarResultadoActividad, guardarClaveActividad });
+  abrirFotoActividad, guardarResultadoActividad, guardarClaveActividad,
+  mostrarConsentimiento, aceptarConsentimiento });
 
 // Arranque: mostrar candado (login o registro)
 iniciarSeguridad();
