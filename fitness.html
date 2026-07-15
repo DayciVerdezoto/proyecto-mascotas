@@ -362,7 +362,7 @@ function mostrarErr(m){ const el=$('#authError'); el.textContent=m; el.classList
 function limpiarErr(){ const el=$('#authError'); el.textContent=''; el.classList.remove('show'); }
 
 let cryptoKey=null, vault=null, estado=null;
-function estadoNuevo(){ return { perfil:null, comidas:[], frecuentes:[], plantillas:[], actividad:[], peso:[], medidas:[], cumplidos:{}, config:{} }; }
+function estadoNuevo(){ return { perfil:null, comidas:[], frecuentes:[], plantillas:[], actividad:[], peso:[], medidas:[], cumplidos:{}, bienestar:{}, config:{} }; }
 function cfg(){ if(!estado.config) estado.config={}; return estado.config; }
 function plantillas(){ if(!estado.plantillas) estado.plantillas=[]; return estado.plantillas; }
 function tipoNombre(id){ const t=TIPOS_COMIDA.find(x=>x.id===id); return t?t.n:id; }
@@ -958,8 +958,30 @@ function renderHoy(){
         <div class="kpi"><div class="l">⚖️ Peso actual</div><div class="v">${fmt(pesoActual(),1)}<span class="u"> kg</span></div></div>
         <div class="kpi"><div class="l">🎯 Meta</div><div class="v">${fmt(estado.perfil.pesoMeta,1)}<span class="u"> kg</span></div></div>
       </div>
-    </div>`;
+    </div>
+
+    ${(()=>{ const bi=bienestarHoy(); const meta=8; return `
+    <div class="card">
+      <h3><span class="em">🌿</span> Bienestar de hoy</h3>
+      <div style="display:flex; align-items:center; gap:12px; margin-bottom:12px;">
+        <div style="flex:1;">
+          <div class="muted" style="font-weight:700;">💧 Agua</div>
+          <div style="font-size:22px; font-weight:800;">${bi.agua} <span style="font-size:13px; color:var(--sub); font-weight:600;">/ ${meta} vasos</span></div>
+          <div class="macro" style="padding:0; background:none;"><div class="bar" style="background:var(--gris-cl); margin-top:6px;"><div style="width:${clamp(bi.agua/meta*100,0,100)}%; background:var(--azul,#2563eb);"></div></div></div>
+        </div>
+        <button class="btn btn-ghost" onclick="aguaAjustar(-1)" style="width:44px; padding:10px 0;">−</button>
+        <button class="btn btn-primary" onclick="aguaAjustar(1)" style="width:44px; padding:10px 0;">＋</button>
+      </div>
+      <div style="display:flex; align-items:center; gap:10px;">
+        <div style="flex:1;"><div class="muted" style="font-weight:700;">😴 Sueño anoche</div>
+          <div style="font-size:13px; color:var(--sub);">${bi.sueno!=null?`<b style="font-size:18px; color:var(--texto);">${fmt(bi.sueno,1)} h</b> ${bi.sueno>=7?'✅ suficiente':'⚠️ poco'}`:'Registra tus horas'}</div></div>
+        <div class="chips" style="flex:0;">${[5,6,7,8,9].map(h=>`<div class="chip ${bi.sueno===h?'sel':''}" style="min-width:38px; padding:8px 6px;" onclick="setSueno(${h})">${h}h</div>`).join('')}</div>
+      </div>
+    </div>`; })()}`;
 }
+function bienestarHoy(){ if(!estado.bienestar) estado.bienestar={}; if(!estado.bienestar[hoyISO()]) estado.bienestar[hoyISO()]={agua:0,sueno:null}; return estado.bienestar[hoyISO()]; }
+function aguaAjustar(d){ const b=bienestarHoy(); b.agua=Math.max(0,(b.agua||0)+d); guardar('bienestar'); render(); }
+function setSueno(h){ const b=bienestarHoy(); b.sueno=(b.sueno===h?null:h); guardar('bienestar'); render(); }
 
 /* ══════════════════════════════════════════════════════════════
    PANTALLA: COMIDAS
@@ -2237,7 +2259,7 @@ Object.assign(window, { irA, abrirAgregarComida, abrirAgregarActividad, elegirAl
   borrManual, addBorrManual, borrPlantillas, usarPlantillaBorr, guardarBorr, guardarComboComoPlantilla,
   borrarPlantilla, registrarPlantillaDirecto, duplicarComida, confirmarDuplicar, manualFallback,
   abrirFotoActividad, guardarResultadoActividad, guardarClaveActividad,
-  mostrarConsentimiento, aceptarConsentimiento });
+  mostrarConsentimiento, aceptarConsentimiento, aguaAjustar, setSueno });
 
 // Arranque: mostrar candado (login o registro)
 iniciarSeguridad();
