@@ -5,14 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#1f7a5a" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0f231d" media="(prefers-color-scheme: dark)">
-<title>Presupuestos — Ahorra y planifica</title>
+<title>Finzen — Presupuesto y control de gastos</title>
 <meta name="description" content="Controla tus ingresos y gastos por mes, planifica y ahorra. Privado y cifrado en tu dispositivo.">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" type="image/png" href="icon-192.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Presupuestos">
+<meta name="apple-mobile-web-app-title" content="Finzen">
 <style>
   :root{
     --verde:#1f7a5a; --verde-claro:#e3f5ec; --verde-borde:#7fd1ac;
@@ -244,7 +244,7 @@
     <div class="bien-slides" id="bienSlides">
       <div class="bien-slide">
         <div class="bien-emoji">💰</div>
-        <h2>Bienvenida a Presupuestos</h2>
+        <h2>Bienvenida a Finzen</h2>
         <p>Tu app para saber en qué se te va el dinero y llegar tranquila a fin de mes. Simple, en español y hecha para cualquiera.</p>
       </div>
       <div class="bien-slide">
@@ -273,7 +273,7 @@
 <div class="candado" id="candado">
   <div class="auth-card">
     <div class="auth-logo">🔐</div>
-    <h2>Presupuestos</h2>
+    <h2>Finzen</h2>
     <p class="auth-sub" id="authSub">Cargando…</p>
     <div class="auth-error" id="authError"></div>
 
@@ -312,7 +312,7 @@
 <!-- ===================== APP ===================== -->
 <div id="app" class="oculto">
 <header>
-  <h1>💰 Presupuestos</h1>
+  <h1>💰 Finzen</h1>
   <div class="header-derecha">
     <div class="mes-nav">
       <button id="mesAnt" title="Mes anterior">‹</button>
@@ -328,7 +328,7 @@
   </div>
 </header>
 <div class="install-banner" id="installBanner">
-  <span>📲 Instala Presupuestos como app en tu teléfono</span>
+  <span>📲 Instala Finzen como app en tu teléfono</span>
   <button class="btn btn-primario btn-mini" id="btnInstalar">Instalar</button>
   <button class="btn-header" id="installCerrar" style="background:transparent;color:var(--gris)">✕</button>
 </div>
@@ -775,7 +775,7 @@ function fmtCorto(n){ n=Number(n)||0; const s=moneda();
   return s+Math.round(n); }
 function iconoDefault(nombre){
   const n=(nombre||"").toLowerCase();
-  const map=[[/aliment|comida|super|mercado|despensa|víver|viver/,"🍔"],[/fuera|restaur|salida|café|cafe|antojo/,"🍽️"],
+  const map=[[/aliment|comida|super|mercado|despensa|víver|viver|nutri|saludable/,"🥗"],[/fuera|restaur|salida|café|cafe|antojo/,"🍽️"],
     [/transp|gasol|combust|bus|uber|taxi|carro|auto|pasaje/,"🚗"],[/renta|alquil|casa|hogar/,"🏠"],
     [/servici|luz|agua|inter|electric|cable|teléf|telef/,"💡"],[/prest|deuda/,"🏦"],[/tarj|crédit|credit/,"💳"],
     [/niñ|hij|escuela|coleg|guarder/,"🧒"],[/salud|farmac|medic|doctor|dental/,"💊"],[/ropa|vestir|calzad|zapat/,"👕"],
@@ -794,7 +794,7 @@ function categoriasIniciales(){
     {id:uid(),nombre:"Préstamos",tipo:"fijo",icono:"🏦",presupuesto:0,gastos:[]},
     {id:uid(),nombre:"Tarjetas",tipo:"fijo",icono:"💳",presupuesto:0,gastos:[]},
     {id:uid(),nombre:"Niños",tipo:"fijo",icono:"🧒",presupuesto:0,gastos:[]},
-    {id:uid(),nombre:"Alimentación",tipo:"variable",icono:"🍔",presupuesto:0,gastos:[]},
+    {id:uid(),nombre:"Alimentación",tipo:"variable",icono:"🥗",presupuesto:0,gastos:[]},
     {id:uid(),nombre:"Comidas fuera de casa",tipo:"variable",icono:"🍽️",presupuesto:0,gastos:[]},
     {id:uid(),nombre:"Transporte",tipo:"variable",icono:"🚗",presupuesto:0,gastos:[]},
   ];
@@ -1232,7 +1232,7 @@ function poblarCorte(){ selCorte.innerHTML="";
 selCorte.onchange=()=>{ estado.config.diaCorte=parseInt(selCorte.value,10)||25; mesVisible=periodoActual(); asegurarMes(mesVisible); render(); };
 
 // Herramientas
-function nombreRespaldo(){ return `presupuestos-respaldo-${hoy()}.json`; }
+function nombreRespaldo(){ return `finzen-respaldo-${hoy()}.json`; }
 function contenidoRespaldo(){ return JSON.stringify(vault,null,2); }
 function descargarRespaldo(){
   const blob=new Blob([contenidoRespaldo()],{type:"application/json"});
@@ -1246,7 +1246,7 @@ document.getElementById("btnDrive").onclick=async()=>{
   const file=new File([contenidoRespaldo()], nombreRespaldo(), {type:"application/json"});
   try{
     if(navigator.canShare && navigator.canShare({files:[file]})){
-      await navigator.share({ files:[file], title:"Respaldo de Presupuestos",
+      await navigator.share({ files:[file], title:"Respaldo de Finzen",
         text:"Copia cifrada de tu presupuesto. Guárdala en Google Drive (o iCloud)." });
       msg.textContent="✅ Si elegiste Google Drive, tu copia quedó guardada ahí.";
     }else{
@@ -1275,7 +1275,7 @@ document.getElementById("fileImport").onchange=ev=>{
         localStorage.setItem(VAULT_KEY,JSON.stringify(vault)); if(haySesion()) await guardarSesion(key);
         document.getElementById("chipUsuario").textContent=vault.usuario||"—";
         asegurarConfig(); mesVisible=periodoActual(); asegurarMes(mesVisible); poblarMoneda(); poblarCorte(); render(); toast("Respaldo importado correctamente."); }
-    }catch(e){ toast("El archivo no es un respaldo válido de Presupuestos."); }
+    }catch(e){ toast("El archivo no es un respaldo válido de Finzen."); }
     ev.target.value="";
   };
   r.readAsText(f);

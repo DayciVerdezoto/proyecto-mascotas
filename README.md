@@ -1,4 +1,4 @@
-# 🔐 Presupuestos
+# 🔐 Finzen
 
 Aplicación web para llevar tu **presupuesto personal mensual**, con una **capa de
 seguridad real**: acceso con usuario y contraseña, y **todos tus datos cifrados**
