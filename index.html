@@ -192,11 +192,70 @@
   .install-banner{position:sticky; top:0; z-index:19; background:var(--azul-bg); border-bottom:1px solid var(--borde); color:var(--texto); padding:10px 16px; display:none; align-items:center; gap:10px; justify-content:center; font-size:13.5px;}
   .install-banner.show{display:flex;}
   header{padding-top:calc(14px + env(safe-area-inset-top));}
+  /* Bienvenida / tutorial */
+  .bienvenida{position:fixed; inset:0; z-index:150; background:linear-gradient(160deg,#1f7a5a,#155244); display:flex; align-items:center; justify-content:center; padding:20px;}
+  .bienvenida.oculto{display:none;}
+  .bien-card{background:var(--tarjeta); color:var(--texto); border-radius:20px; width:100%; max-width:420px; padding:30px 26px 22px; box-shadow:0 20px 60px rgba(0,0,0,.35); text-align:center;}
+  .bien-slide{display:none;} .bien-slide.activo{display:block; animation:fade .3s;}
+  @keyframes fade{from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:none;}}
+  .bien-emoji{font-size:46px; margin-bottom:8px;}
+  .bien-card h2{font-size:22px; margin:0 0 10px;}
+  .bien-card p{font-size:15px; color:var(--texto); opacity:.9; line-height:1.55; margin:0;}
+  .bien-dots{display:flex; gap:7px; justify-content:center; margin:22px 0 18px;}
+  .bien-dots i{width:8px; height:8px; border-radius:50%; background:var(--borde); transition:.2s;}
+  .bien-dots i.on{background:var(--verde); width:22px; border-radius:6px;}
+  .bien-acciones{display:flex; align-items:center; justify-content:space-between; gap:10px;}
+  .bien-acciones .btn-header{color:var(--gris);}
+  /* Primeros pasos (checklist) */
+  .pasos{background:var(--tarjeta); border:1px solid var(--verde-borde); border-radius:14px; box-shadow:var(--sombra); padding:14px 16px; margin-bottom:16px;}
+  .pasos-cab{display:flex; align-items:center; gap:10px; margin-bottom:10px;}
+  .pasos-cab h3{font-size:15px; margin:0; flex:1;}
+  .pasos-prog{font-family:inherit; font-size:12.5px; color:var(--gris); font-weight:600;}
+  .pasos-barra{height:6px; background:var(--gris-claro); border-radius:6px; overflow:hidden; margin-bottom:12px;}
+  .pasos-barra > div{height:100%; background:var(--verde); transition:width .4s;}
+  .paso{display:flex; align-items:center; gap:11px; padding:8px 0; font-size:14.5px;}
+  .paso .marca{width:24px; height:24px; border-radius:50%; border:2px solid var(--borde); flex:0 0 auto; display:flex; align-items:center; justify-content:center; font-size:14px; color:#fff; font-weight:bold;}
+  .paso.ok .marca{background:var(--verde); border-color:var(--verde);}
+  .paso.ok .ptxt{color:var(--gris); text-decoration:line-through;}
+  .paso .ptxt{flex:1;} .paso .ptxt b{font-weight:700;}
+  .pasos-cerrar{background:none; border:none; color:var(--gris); cursor:pointer; font-size:15px;}
+  .pasos-listo{background:var(--verde-claro); border-color:var(--verde-borde);}
   @media(max-width:600px){ .kpi .valor{font-size:20px;} header h1{font-size:17px;} .wrap{padding:12px;} }
 </style>
 </head>
 <body>
 <div id="toasts" aria-live="polite"></div>
+
+<!-- ===================== BIENVENIDA / TUTORIAL ===================== -->
+<div class="bienvenida oculto" id="bienvenida">
+  <div class="bien-card">
+    <div class="bien-slides" id="bienSlides">
+      <div class="bien-slide">
+        <div class="bien-emoji">💰</div>
+        <h2>Bienvenida a Presupuestos</h2>
+        <p>Tu app para saber en qué se te va el dinero y llegar tranquila a fin de mes. Simple, en español y hecha para cualquiera.</p>
+      </div>
+      <div class="bien-slide">
+        <div class="bien-emoji">1️⃣2️⃣3️⃣</div>
+        <h2>Funciona en 3 pasos</h2>
+        <p style="text-align:left; max-width:340px; margin:0 auto;">
+          <b>1.</b> Anota tus <b>ingresos</b> del mes.<br>
+          <b>2.</b> Ponle un <b>presupuesto</b> a cada categoría (renta, comida…).<br>
+          <b>3.</b> Cada vez que gastes, usa <b>“Registrar gasto”</b>. Las barras te avisan al llegar al 80%. 🚦</p>
+      </div>
+      <div class="bien-slide">
+        <div class="bien-emoji">🔒</div>
+        <h2>Privada y segura</h2>
+        <p>Tus datos se guardan <b>cifrados</b> solo en tu teléfono. Nadie más los ve. Y puedes guardar una copia en <b>Google Drive</b> cuando quieras.</p>
+      </div>
+    </div>
+    <div class="bien-dots" id="bienDots"></div>
+    <div class="bien-acciones">
+      <button class="btn-header" id="bienSaltar" style="background:transparent;color:var(--gris)">Saltar</button>
+      <button class="btn btn-primario" id="bienSiguiente">Siguiente</button>
+    </div>
+  </div>
+</div>
 
 <!-- ===================== SEGURIDAD ===================== -->
 <div class="candado" id="candado">
@@ -249,6 +308,7 @@
       <button id="mesSig" title="Mes siguiente">›</button>
     </div>
     <span class="usuario-chip">👤 <span id="chipUsuario">—</span></span>
+    <button class="btn-header" id="btnAyuda" title="Cómo se usa / tutorial">❔ Ayuda</button>
     <button class="btn-header" id="btnTema" title="Modo claro/oscuro">🌙</button>
     <button class="btn-header" id="btnHistorial" title="Deshacer / versiones anteriores">↩︎ Deshacer</button>
     <button class="btn-header" id="btnCambiarPass" title="Cambiar contraseña">🔑</button>
@@ -262,12 +322,7 @@
 </div>
 
 <div class="wrap">
-  <div class="ayuda" id="ayuda">
-    <span>👋</span>
-    <div><b>¿Cómo se usa?</b> 1) Anota tus <b>ingresos</b>. 2) Crea <b>categorías</b> con su presupuesto (renta, comida, transporte…).
-    3) Cada vez que gastes, usa <b>“Registrar gasto”</b> y elige de qué presupuesto se descuenta. Las barras te avisan cuando te acercas al límite. 🚦</div>
-    <button class="cerrar" id="cerrarAyuda" title="Ocultar">✕</button>
-  </div>
+  <div id="onboarding"></div>
 
   <div id="alertas"></div>
 
@@ -471,6 +526,46 @@ document.getElementById("btnInstalar").addEventListener("click",async()=>{
 document.getElementById("installCerrar").addEventListener("click",()=>document.getElementById("installBanner").classList.remove("show"));
 window.addEventListener("appinstalled",()=>{ document.getElementById("installBanner").classList.remove("show"); toast("¡App instalada! 🎉","ok"); });
 
+// ---------- Bienvenida / tutorial ----------
+let bienIdx=0;
+function pintarSlide(){
+  const slides=[...document.querySelectorAll("#bienSlides .bien-slide")];
+  slides.forEach((s,i)=>s.classList.toggle("activo",i===bienIdx));
+  document.getElementById("bienDots").innerHTML=slides.map((_,i)=>`<i class="${i===bienIdx?'on':''}"></i>`).join("");
+  document.getElementById("bienSiguiente").textContent=(bienIdx>=slides.length-1)?"Empezar":"Siguiente";
+}
+function mostrarBienvenida(){ bienIdx=0; document.getElementById("bienvenida").classList.remove("oculto"); pintarSlide(); }
+function cerrarBienvenida(){ document.getElementById("bienvenida").classList.add("oculto");
+  if(estado&&estado.config){ estado.config.bienvenidaVista=true; persist(); } }
+document.getElementById("bienSiguiente").addEventListener("click",()=>{
+  const total=document.querySelectorAll("#bienSlides .bien-slide").length;
+  if(bienIdx>=total-1){ cerrarBienvenida(); toast("¡Listo! Empecemos 🎉","ok"); } else { bienIdx++; pintarSlide(); }
+});
+document.getElementById("bienSaltar").addEventListener("click",cerrarBienvenida);
+document.getElementById("btnAyuda").addEventListener("click",mostrarBienvenida);
+
+// ---------- Primeros pasos (checklist) ----------
+function renderOnboarding(m){
+  const cont=document.getElementById("onboarding"); if(!cont) return;
+  if(estado.config && estado.config.onboardingCerrado){ cont.innerHTML=""; return; }
+  const pasos=[
+    { ok:m.ingresos.length>0, txt:'Agrega tu primer <b>ingreso</b>' },
+    { ok:m.categorias.some(c=>(Number(c.presupuesto)||0)>0), txt:'Asigna un <b>presupuesto</b> a una categoría' },
+    { ok:m.categorias.some(c=>(c.gastos||[]).length>0), txt:'Registra tu primer <b>gasto</b>' }
+  ];
+  const done=pasos.filter(p=>p.ok).length, todo=done===pasos.length;
+  cont.innerHTML=`<div class="pasos ${todo?'pasos-listo':''}">
+    <div class="pasos-cab"><span>${todo?'🎉':'👋'}</span>
+      <h3>${todo?'¡Completaste tus primeros pasos!':'Primeros pasos'}</h3>
+      <span class="pasos-prog">${done}/${pasos.length}</span>
+      <button class="pasos-cerrar" data-cerrar-onb title="Ocultar">✕</button></div>
+    ${todo?'':`<div class="pasos-barra"><div style="width:${done/pasos.length*100}%"></div></div>`}
+    ${todo?'<div class="paso"><span class="ptxt">Ya dominas lo básico 💪. Cuando quieras, planifica meses a futuro o guarda un respaldo en Google Drive.</span></div>'
+      :pasos.map(p=>`<div class="paso ${p.ok?'ok':''}"><span class="marca">${p.ok?'✓':''}</span><span class="ptxt">${p.txt}</span></div>`).join("")}
+  </div>`;
+}
+document.addEventListener("click",e=>{ if(e.target.closest("[data-cerrar-onb]") && estado){ estado.config.onboardingCerrado=true; render(); toast("Puedes reabrir el tutorial con el botón ❔ Ayuda"); } });
+
 /* ============================================================
    SEGURIDAD: login + cifrado AES-256-GCM (clave por PBKDF2)
    ============================================================ */
@@ -573,6 +668,7 @@ function entrarApp(){
   asegurarConfig(); mesVisible=periodoActual(); asegurarMes(mesVisible); poblarMoneda(); poblarCorte();
   document.getElementById("gFecha").value=hoyISO(); registrarActividad(); pedirPersistencia();
   snapshot("Al abrir la app"); render();
+  if(!estado.config.bienvenidaVista) mostrarBienvenida();
 }
 async function pedirPersistencia(){
   try{ if(navigator.storage && navigator.storage.persist){ await navigator.storage.persist(); } }catch(e){}
@@ -721,6 +817,7 @@ function render(){
   document.getElementById("kGastado").textContent=fmt(totalGastado);
   document.getElementById("kSaldo").textContent=fmt(totalIng-totalGastado);
 
+  renderOnboarding(m);
   renderAlertas(m,totalIng,totalPresu);
   renderBarras(m);
   renderGrafica(m);
@@ -952,7 +1049,6 @@ function traerDe(clave){
 function escapar(s){ return String(s??"").replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
 /* ---------- Eventos ---------- */
-document.getElementById("cerrarAyuda").onclick=()=>document.getElementById("ayuda").style.display="none";
 document.getElementById("mesAnt").onclick=()=>cambiarMes(-1);
 document.getElementById("mesSig").onclick=()=>cambiarMes(1);
 function cambiarMes(delta){ const [a,m]=mesVisible.split("-").map(Number); const d=new Date(a,m-1+delta,1);
