@@ -2,9 +2,17 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="theme-color" content="#1f7a5a">
-<title>Presupuestos</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#1f7a5a" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0f231d" media="(prefers-color-scheme: dark)">
+<title>Presupuestos — Ahorra y planifica</title>
+<meta name="description" content="Controla tus ingresos y gastos por mes, planifica y ahorra. Privado y cifrado en tu dispositivo.">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Presupuestos">
 <style>
   :root{
     --verde:#1f7a5a; --verde-claro:#e3f5ec; --verde-borde:#7fd1ac;
@@ -15,13 +23,32 @@
     --texto:#1f2937; --fondo:#f7f8fa; --tarjeta:#ffffff;
     --sombra:0 1px 3px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.04);
   }
+  /* Modo oscuro: automático por el sistema y manual con el interruptor */
+  @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+    --verde:#2ea884; --verde-claro:#173a2f; --verde-borde:#2f7860;
+    --amarillo:#e0b23a; --amarillo-bg:#332b12; --amarillo-borde:#5c4a1c;
+    --rojo:#e5675a; --rojo-bg:#3a201d; --rojo-borde:#6e332d;
+    --azul:#5b9bff; --azul-bg:#16233a;
+    --gris:#9aa4ad; --gris-claro:#232b31; --borde:#2b343c;
+    --texto:#e6eaed; --fondo:#0f1418; --tarjeta:#1a2127;
+    --sombra:0 1px 3px rgba(0,0,0,.45),0 1px 2px rgba(0,0,0,.3);
+  }}
+  :root[data-theme="dark"]{
+    --verde:#2ea884; --verde-claro:#173a2f; --verde-borde:#2f7860;
+    --amarillo:#e0b23a; --amarillo-bg:#332b12; --amarillo-borde:#5c4a1c;
+    --rojo:#e5675a; --rojo-bg:#3a201d; --rojo-borde:#6e332d;
+    --azul:#5b9bff; --azul-bg:#16233a;
+    --gris:#9aa4ad; --gris-claro:#232b31; --borde:#2b343c;
+    --texto:#e6eaed; --fondo:#0f1418; --tarjeta:#1a2127;
+    --sombra:0 1px 3px rgba(0,0,0,.45),0 1px 2px rgba(0,0,0,.3);
+  }
   *{box-sizing:border-box;}
   body{margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; background:var(--fondo); color:var(--texto); line-height:1.45; font-size:15px;}
 
   /* ---------- Seguridad ---------- */
   .candado{position:fixed; inset:0; z-index:100; background:linear-gradient(160deg,#1f7a5a,#155244); display:flex; align-items:center; justify-content:center; padding:18px; overflow:auto;}
   .candado.oculto{display:none;}
-  .auth-card{background:#fff; border-radius:18px; box-shadow:0 18px 50px rgba(0,0,0,.3); width:100%; max-width:400px; padding:28px 26px; margin:auto;}
+  .auth-card{background:var(--tarjeta); border-radius:18px; box-shadow:0 18px 50px rgba(0,0,0,.3); width:100%; max-width:400px; padding:28px 26px; margin:auto;}
   .auth-logo{text-align:center; font-size:40px; margin-bottom:4px;}
   .auth-card h2{text-align:center; margin:0 0 4px; font-size:22px;}
   .auth-sub{text-align:center; color:var(--gris); font-size:13.5px; margin-bottom:18px;}
@@ -79,7 +106,7 @@
   th{color:var(--gris); font-size:12px; text-transform:uppercase; letter-spacing:.3px;}
   td.num,th.num{text-align:right; font-variant-numeric:tabular-nums;}
   .fila-vacia{color:var(--gris); text-align:center; padding:18px; font-style:italic;}
-  input,select{font-family:inherit; font-size:14px; padding:9px 10px; border:1px solid var(--borde); border-radius:8px; background:#fff; color:var(--texto); width:100%;}
+  input,select{font-family:inherit; font-size:14px; padding:9px 10px; border:1px solid var(--borde); border-radius:8px; background:var(--tarjeta); color:var(--texto); width:100%;}
   input:focus,select:focus{outline:2px solid var(--verde-borde); border-color:var(--verde);}
   .form-grid{display:grid; grid-template-columns:130px 1fr 1fr 1.3fr auto; gap:10px; align-items:end;}
   .form-linea{display:flex; gap:8px; flex-wrap:wrap; align-items:flex-end;}
@@ -89,7 +116,7 @@
 
   /* Tarjetas de categoría */
   .grupo-titulo{font-size:13px; font-weight:700; color:var(--gris); text-transform:uppercase; letter-spacing:.5px; margin:6px 0 10px; display:flex; align-items:center; gap:8px;}
-  .cat{border:1px solid var(--borde); border-radius:12px; padding:14px; margin-bottom:12px; transition:.2s; background:#fff;}
+  .cat{border:1px solid var(--borde); border-radius:12px; padding:14px; margin-bottom:12px; transition:.2s; background:var(--tarjeta);}
   .cat.pagada{background:var(--verde-claro); border-color:var(--verde-borde);}
   .cat.alerta{background:var(--amarillo-bg); border-color:var(--amarillo-borde);}
   .cat.excedida{background:var(--rojo-bg); border-color:var(--rojo-borde);}
@@ -151,15 +178,25 @@
   .pie-tools{display:flex; gap:10px; flex-wrap:wrap; justify-content:center; margin:24px 0 40px;}
   .modal-fondo{position:fixed; inset:0; background:rgba(0,0,0,.45); display:none; align-items:center; justify-content:center; z-index:50; padding:16px;}
   .modal-fondo.activo{display:flex;}
-  .modal{background:#fff; border-radius:16px; padding:22px; width:100%; max-width:440px; box-shadow:0 10px 40px rgba(0,0,0,.2);}
+  .modal{background:var(--tarjeta); border-radius:16px; padding:22px; width:100%; max-width:440px; box-shadow:0 10px 40px rgba(0,0,0,.2);}
   .modal h3{margin:0 0 14px;}
   .modal .campo{margin-bottom:12px;}
   .modal-acciones{display:flex; gap:10px; justify-content:flex-end; margin-top:6px;}
   .hint{font-size:12.5px; color:var(--gris); margin-top:4px;}
+  /* Notificaciones (toasts) */
+  #toasts{position:fixed; left:50%; bottom:calc(18px + env(safe-area-inset-bottom)); transform:translateX(-50%); z-index:200; display:flex; flex-direction:column; gap:8px; align-items:center; width:max-content; max-width:92vw; pointer-events:none;}
+  .toast{background:#1f2937; color:#fff; padding:11px 16px; border-radius:12px; font-size:14px; box-shadow:0 6px 24px rgba(0,0,0,.28); opacity:0; transform:translateY(12px); transition:.25s; display:flex; align-items:center; gap:8px;}
+  .toast.show{opacity:1; transform:translateY(0);}
+  .toast.ok{background:#1f7a5a;} .toast.warn{background:#b8860b;} .toast.err{background:#c0392b;}
+  /* Botón de instalación */
+  .install-banner{position:sticky; top:0; z-index:19; background:var(--azul-bg); border-bottom:1px solid var(--borde); color:var(--texto); padding:10px 16px; display:none; align-items:center; gap:10px; justify-content:center; font-size:13.5px;}
+  .install-banner.show{display:flex;}
+  header{padding-top:calc(14px + env(safe-area-inset-top));}
   @media(max-width:600px){ .kpi .valor{font-size:20px;} header h1{font-size:17px;} .wrap{padding:12px;} }
 </style>
 </head>
 <body>
+<div id="toasts" aria-live="polite"></div>
 
 <!-- ===================== SEGURIDAD ===================== -->
 <div class="candado" id="candado">
@@ -212,11 +249,17 @@
       <button id="mesSig" title="Mes siguiente">›</button>
     </div>
     <span class="usuario-chip">👤 <span id="chipUsuario">—</span></span>
+    <button class="btn-header" id="btnTema" title="Modo claro/oscuro">🌙</button>
     <button class="btn-header" id="btnHistorial" title="Deshacer / versiones anteriores">↩︎ Deshacer</button>
     <button class="btn-header" id="btnCambiarPass" title="Cambiar contraseña">🔑</button>
     <button class="btn-header" id="btnBloquear" title="Cerrar sesión">🔒 Salir</button>
   </div>
 </header>
+<div class="install-banner" id="installBanner">
+  <span>📲 Instala Presupuestos como app en tu teléfono</span>
+  <button class="btn btn-primario btn-mini" id="btnInstalar">Instalar</button>
+  <button class="btn-header" id="installCerrar" style="background:transparent;color:var(--gris)">✕</button>
+</div>
 
 <div class="wrap">
   <div class="ayuda" id="ayuda">
@@ -394,6 +437,40 @@
 
 <script>
 "use strict";
+
+/* ============================================================
+   EXPERIENCIA: tema, notificaciones, PWA (instalar/offline)
+   ============================================================ */
+// Aplicar tema guardado cuanto antes (evita parpadeo)
+(function(){ const t=localStorage.getItem("presupuestos_tema"); if(t==="dark"||t==="light") document.documentElement.setAttribute("data-theme",t); })();
+function toast(msg, tipo){
+  const c=document.getElementById("toasts"); if(!c) return;
+  const d=document.createElement("div"); d.className="toast "+(tipo||""); d.textContent=msg; c.appendChild(d);
+  requestAnimationFrame(()=>d.classList.add("show"));
+  setTimeout(()=>{ d.classList.remove("show"); setTimeout(()=>d.remove(),300); }, 3400);
+}
+function temaGuardado(){ return localStorage.getItem("presupuestos_tema")||"auto"; }
+function iconoTema(){ const b=document.getElementById("btnTema"); if(!b) return; const t=temaGuardado();
+  b.textContent = t==="dark"?"☀️":(t==="light"?"🌙":"🌗"); b.title="Tema: "+(t==="dark"?"oscuro":(t==="light"?"claro":"automático")); }
+document.getElementById("btnTema").addEventListener("click",()=>{
+  const orden=["auto","light","dark"]; const t=orden[(orden.indexOf(temaGuardado())+1)%3];
+  if(t==="auto"){ localStorage.removeItem("presupuestos_tema"); document.documentElement.removeAttribute("data-theme"); }
+  else{ localStorage.setItem("presupuestos_tema",t); document.documentElement.setAttribute("data-theme",t); }
+  iconoTema(); toast(t==="auto"?"Tema automático (según tu teléfono)":(t==="dark"?"Modo oscuro":"Modo claro"));
+});
+iconoTema();
+// Service Worker (funciona sin internet y permite instalarla)
+if("serviceWorker" in navigator){ window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{})); }
+// Instalar (Android/Chrome)
+let deferredPrompt=null;
+window.addEventListener("beforeinstallprompt",(e)=>{ e.preventDefault(); deferredPrompt=e; document.getElementById("installBanner").classList.add("show"); });
+document.getElementById("btnInstalar").addEventListener("click",async()=>{
+  document.getElementById("installBanner").classList.remove("show");
+  if(!deferredPrompt) return; deferredPrompt.prompt(); await deferredPrompt.userChoice; deferredPrompt=null;
+});
+document.getElementById("installCerrar").addEventListener("click",()=>document.getElementById("installBanner").classList.remove("show"));
+window.addEventListener("appinstalled",()=>{ document.getElementById("installBanner").classList.remove("show"); toast("¡App instalada! 🎉","ok"); });
+
 /* ============================================================
    SEGURIDAD: login + cifrado AES-256-GCM (clave por PBKDF2)
    ============================================================ */
@@ -534,8 +611,8 @@ async function restaurarVersion(idx){
     estado=await descifrar(cryptoKey, item.data); asegurarConfig();
     if(!estado.meses[mesVisible]){ mesVisible=periodoActual(); } asegurarMes(mesVisible);
     poblarMoneda(); poblarCorte(); document.getElementById("modalHist").classList.remove("activo"); render();
-    alert("Listo, tus datos volvieron a como estaban en ese momento.");
-  }catch(e){ alert("No se pudo restaurar esa versión."); }
+    toast("Listo, tus datos volvieron a como estaban en ese momento.");
+  }catch(e){ toast("No se pudo restaurar esa versión."); }
 }
 function renderHist(){
   const cont=document.getElementById("contHist"); const h=leerHist();
@@ -832,7 +909,7 @@ function renderProyeccion(){
 }
 function planificar(n){
   const base=mesData();
-  if(!base.ingresos.length && !base.categorias.length){ alert("Primero registra tus ingresos y presupuestos en el mes actual; se usarán como plantilla."); return; }
+  if(!base.ingresos.length && !base.categorias.length){ toast("Primero registra tus ingresos y presupuestos en el mes actual; se usarán como plantilla."); return; }
   snapshot("Antes de generar el plan");
   const periodos=proximosPeriodos(mesVisible, n+1).slice(1); // los próximos n (sin el actual)
   let creados=0, saltados=0;
@@ -848,7 +925,7 @@ function planificar(n){
     }else saltados++;
   });
   render();
-  alert(`Listo. Planifiqué ${creados} mes(es) copiando tus ingresos y presupuestos actuales${saltados?` (omití ${saltados} que ya tenían datos)`:""}. Ajusta cada uno con las flechas ‹ › de arriba.`);
+  toast(`Listo. Planifiqué ${creados} mes(es) copiando tus ingresos y presupuestos actuales${saltados?` (omití ${saltados} que ya tenían datos)`:""}. Ajusta cada uno con las flechas ‹ › de arriba.`);
 }
 // Trae presupuesto e ingresos de otro mes al mes actual, CONSERVANDO los gastos ya registrados (por nombre de categoría).
 function poblarCopiarDe(){
@@ -859,7 +936,7 @@ function poblarCopiarDe(){
   if(prev && claves.includes(prev)) sel.value=prev;
 }
 function traerDe(clave){
-  const src=estado.meses[clave]; if(!src){ alert("Elige un mes válido."); return; }
+  const src=estado.meses[clave]; if(!src){ toast("Elige un mes válido."); return; }
   if(!confirm(`Traer los presupuestos e ingresos de "${etiquetaMes(clave)}" al mes actual.\nTus gastos ya registrados este mes se conservan. ¿Continuar?`)) return;
   snapshot("Antes de traer de "+etiquetaMes(clave));
   const dst=mesData();
@@ -869,7 +946,7 @@ function traerDe(clave){
     gastos:(gastosPorNombre[c.nombre]||[]).map(g=>({...g})) }));
   dst.ingresos=(src.ingresos||[]).map(i=>({ id:uid(), nombre:i.nombre, monto:i.monto }));
   render();
-  alert(`Listo. Traje los presupuestos e ingresos de ${etiquetaMes(clave)} y conservé tus gastos de este mes.`);
+  toast(`Listo. Traje los presupuestos e ingresos de ${etiquetaMes(clave)} y conservé tus gastos de este mes.`);
 }
 
 function escapar(s){ return String(s??"").replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
@@ -883,8 +960,8 @@ function cambiarMes(delta){ const [a,m]=mesVisible.split("-").map(Number); const
 
 document.getElementById("btnAddIngreso").onclick=()=>{
   const nombre=document.getElementById("inIngNombre").value.trim(), monto=parseFloat(document.getElementById("inIngMonto").value);
-  if(!nombre){ alert("Escribe el nombre de la categoría de ingreso."); return; }
-  if(!(monto>0)){ alert("Escribe un monto válido."); return; }
+  if(!nombre){ toast("Escribe el nombre de la categoría de ingreso."); return; }
+  if(!(monto>0)){ toast("Escribe un monto válido."); return; }
   mesData().ingresos.push({id:uid(),nombre,monto});
   document.getElementById("inIngNombre").value=""; document.getElementById("inIngMonto").value=""; render();
 };
@@ -899,8 +976,8 @@ function registrarGasto(){
   const desc=document.getElementById("gDesc").value.trim();
   const monto=parseFloat(document.getElementById("gMonto").value);
   const c=m.categorias.find(x=>x.id===cid);
-  if(!c){ alert("Elige de qué presupuesto se descuenta el gasto (o crea una categoría)."); return; }
-  if(!(monto>0)){ alert("Escribe un monto válido."); return; }
+  if(!c){ toast("Elige de qué presupuesto se descuenta el gasto (o crea una categoría)."); return; }
+  if(!(monto>0)){ toast("Escribe un monto válido."); return; }
   c.gastos=c.gastos||[]; c.gastos.push({id:uid(),desc,monto,fecha});
   document.getElementById("gDesc").value=""; document.getElementById("gMonto").value="";
   render();
@@ -917,7 +994,7 @@ document.addEventListener("click",e=>{
     if(c){ c.gastos=c.gastos.filter(g=>g.id!==gid); render(); } }
   else if(t.dataset.pagar){ const c=m.categorias.find(x=>x.id===t.dataset.pagar);
     if(c){ const rest=(Number(c.presupuesto)||0)-gastadoCat(c);
-      if(rest<=0){ alert("Esta categoría no tiene presupuesto asignado. Edítala para ponerle un monto."); return; }
+      if(rest<=0){ toast("Esta categoría no tiene presupuesto asignado. Edítala para ponerle un monto."); return; }
       c.gastos=c.gastos||[]; c.gastos.push({id:uid(),desc:"Pago",monto:rest,fecha:hoyISO(),auto:true}); render(); } }
   else if(t.dataset.despagar){ const c=m.categorias.find(x=>x.id===t.dataset.despagar);
     if(c&&confirm(`¿Deshacer los pagos registrados de "${c.nombre}"?`)){ c.gastos=(c.gastos||[]).filter(g=>!g.auto); render(); } }
@@ -945,7 +1022,7 @@ function cerrarModal(){ modal.classList.remove("activo"); editandoId=null; }
 document.getElementById("mGuardar").onclick=()=>{
   const nombre=document.getElementById("mNombre").value.trim(), tipo=document.getElementById("mTipo").value;
   const presupuesto=parseFloat(document.getElementById("mPresupuesto").value)||0;
-  if(!nombre){ alert("Escribe un nombre para la categoría."); return; }
+  if(!nombre){ toast("Escribe un nombre para la categoría."); return; }
   const m=mesData();
   if(editandoId){ const c=m.categorias.find(x=>x.id===editandoId); c.nombre=nombre; c.tipo=tipo; c.presupuesto=presupuesto; }
   else m.categorias.push({id:uid(),nombre,tipo,presupuesto,gastos:[]});
@@ -973,7 +1050,7 @@ document.getElementById("cpGuardar").onclick=async()=>{
     vault.salt=b64(salt); vault.hint=hint; vault.check=await cifrar(keyN,CHECK_TOKEN); vault.data=await cifrar(keyN,estado);
     localStorage.setItem(VAULT_KEY,JSON.stringify(vault)); cryptoKey=keyN;
     if(haySesion()) await guardarSesion(keyN);
-    modalPass.classList.remove("activo"); alert("Contraseña actualizada. Tus datos se cifraron con la nueva contraseña.");
+    modalPass.classList.remove("activo"); toast("Contraseña actualizada. Tus datos se cifraron con la nueva contraseña.");
   }catch(ex){ mostrarError(err,"No se pudo cambiar: "+ex.message); }
 };
 
@@ -1029,14 +1106,14 @@ document.getElementById("fileImport").onchange=ev=>{
       const pass=prompt("Escribe la contraseña con la que se creó este respaldo:"); if(pass===null){ ev.target.value=""; return; }
       const key=await derivarLlave(pass,deB64(data.salt)); let ok=false;
       try{ ok=(await descifrar(key,data.check))===CHECK_TOKEN; }catch(_){}
-      if(!ok){ alert("Contraseña incorrecta para este respaldo."); ev.target.value=""; return; }
+      if(!ok){ toast("Contraseña incorrecta para este respaldo."); ev.target.value=""; return; }
       if(confirm("Esto reemplazará tus datos actuales por los del respaldo. ¿Continuar?")){
         await snapshot("Antes de importar respaldo");
         vault=data; cryptoKey=key; estado=await descifrar(key,data.data); estadoMigrar();
         localStorage.setItem(VAULT_KEY,JSON.stringify(vault)); if(haySesion()) await guardarSesion(key);
         document.getElementById("chipUsuario").textContent=vault.usuario||"—";
-        asegurarConfig(); mesVisible=periodoActual(); asegurarMes(mesVisible); poblarMoneda(); poblarCorte(); render(); alert("Respaldo importado correctamente."); }
-    }catch(e){ alert("El archivo no es un respaldo válido de Presupuestos."); }
+        asegurarConfig(); mesVisible=periodoActual(); asegurarMes(mesVisible); poblarMoneda(); poblarCorte(); render(); toast("Respaldo importado correctamente."); }
+    }catch(e){ toast("El archivo no es un respaldo válido de Presupuestos."); }
     ev.target.value="";
   };
   r.readAsText(f);
@@ -1044,7 +1121,7 @@ document.getElementById("fileImport").onchange=ev=>{
 document.getElementById("btnCopiarMes").onclick=()=>{
   const [a,mm]=mesVisible.split("-").map(Number); const d=new Date(a,mm-2,1);
   const claveAnt=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`; const ant=estado.meses[claveAnt];
-  if(!ant){ alert("No hay un mes anterior con datos para copiar."); return; }
+  if(!ant){ toast("No hay un mes anterior con datos para copiar."); return; }
   if(!confirm("Se copiarán las categorías y presupuestos del mes anterior (sin los gastos ni pagos). ¿Continuar?")) return;
   snapshot("Antes de copiar del mes anterior");
   mesData().categorias=ant.categorias.map(c=>({id:uid(),nombre:c.nombre,tipo:c.tipo,presupuesto:c.presupuesto,gastos:[]})); render();
