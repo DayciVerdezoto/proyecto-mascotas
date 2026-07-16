@@ -128,6 +128,12 @@
   .cat-nombre{font-weight:700; font-size:15.5px; display:flex; align-items:center; gap:8px;}
   .cat-montos{font-size:13.5px; color:var(--gris); font-variant-numeric:tabular-nums;}
   .cat-montos b{color:var(--texto);}
+  .tc-linea{display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap; margin-top:8px; font-size:12.5px; color:var(--gris);}
+  .tc-fechas{font-weight:600;}
+  .tc-badge{font-size:11.5px; font-weight:700; padding:3px 9px; border-radius:20px; white-space:nowrap;}
+  .chip-info{background:var(--azul-bg); color:var(--azul);}
+  .chip-warn{background:var(--amarillo-bg); color:var(--amarillo);}
+  .chip-bad{background:var(--rojo-bg); color:var(--rojo);}
   .barra{height:12px; background:var(--gris-claro); border-radius:20px; overflow:hidden; margin:10px 0 4px;}
   .barra > div{height:100%; border-radius:20px; transition:width .3s; background:var(--verde);}
   .barra.amarillo > div{background:var(--amarillo);} .barra.rojo > div{background:var(--rojo);} .barra.azul > div{background:var(--azul);}
@@ -488,6 +494,14 @@
       </select>
       <div class="hint" id="mHint"></div></div>
     <div class="campo"><label>Presupuesto asignado</label><input id="mPresupuesto" type="number" inputmode="decimal" min="0" step="any" placeholder="0.00"></div>
+    <div id="mFechasTC" style="display:none;">
+      <label style="font-size:12px; color:var(--gris); font-weight:600;">💳 Tarjeta / servicio — recordatorio de pago (opcional)</label>
+      <div style="display:flex; gap:10px; margin-top:4px;">
+        <div class="campo" style="flex:1;"><label style="font-weight:400;">Día de corte</label><input id="mCorte" type="number" inputmode="numeric" min="1" max="31" placeholder="Ej. 15"></div>
+        <div class="campo" style="flex:1;"><label style="font-weight:400;">Día de pago</label><input id="mPago" type="number" inputmode="numeric" min="1" max="31" placeholder="Ej. 5"></div>
+      </div>
+      <div class="hint">Te avisaremos cuando se acerque el día de pago.</div>
+    </div>
     <div class="modal-acciones"><button class="btn btn-sec" id="mCancelar">Cancelar</button><button class="btn btn-primario" id="mGuardar">Guardar</button></div>
   </div>
 </div>
@@ -773,6 +787,16 @@ function etiquetaMesCorta(c){ const [a,m]=c.split("-").map(Number); const dc=dia
   return dc<=1 ? `${MESES[m-1].slice(0,3)} ${String(a).slice(2)}` : `${dc} ${MESES[m-1].slice(0,3)}`; }
 function gastadoCat(c){ return (c.gastos||[]).reduce((s,g)=>s+(Number(g.monto)||0),0); }
 function estaPagado(c){ const p=Number(c.presupuesto)||0; return p>0 && gastadoCat(c)>=p-0.005; }
+// Fechas de tarjetas: día de corte y de pago (día del mes 1-31)
+function diaMesValido(dia,y,m){ const ult=new Date(y,m+1,0).getDate(); return Math.min(dia,ult); }
+function proximaFecha(dia){
+  const h=new Date(); h.setHours(0,0,0,0);
+  let y=h.getFullYear(), m=h.getMonth();
+  let cand=new Date(y,m,diaMesValido(dia,y,m));
+  if(cand<h){ m++; if(m>11){ m=0; y++; } cand=new Date(y,m,diaMesValido(dia,y,m)); }
+  return { fecha:cand, dias:Math.round((cand-h)/86400000) };
+}
+function textoDias(d){ return d===0?"hoy":(d===1?"mañana":`en ${d} días`); }
 function fmtCorto(n){ n=Number(n)||0; const s=moneda();
   if(n>=1000000) return s+(n/1000000).toFixed(1).replace(/\.0$/,'')+"M";
   if(n>=1000) return s+(n/1000).toFixed(n>=100000?0:1).replace(/\.0$/,'')+"k";
@@ -929,6 +953,7 @@ function tarjetaCat(c){
       <span class="cat-nombre">${iconoCat(c)} ${escapar(c.nombre)}</span>${cabDer}
     </div>
     <div class="cat-montos">${c.tipo==="fijo"&&estaPagado(c)?`Presupuesto: <b>${fmt(presu)}</b>`:`<b>${fmt(gastado)}</b> de <b>${fmt(presu)}</b> · disponible <b>${fmt(Math.max(presu-gastado,0))}</b>`}</div>
+    ${fechasTC(c)}
     <div class="barra ${claseBarra}"><div style="width:${Math.min(pct*100,100)}%"></div></div>
     <div class="cat-pie">
       <span class="cat-montos">${estadoTxt}</span>
@@ -940,6 +965,19 @@ function tarjetaCat(c){
     </div>
     ${listaGastos(c)}`;
   return {div,presu,gastado};
+}
+function fechasTC(c){
+  if(c.tipo!=="fijo") return "";
+  const corte=Number(c.fechaCorte)||0, pago=Number(c.fechaPago)||0;
+  if(!corte && !pago) return "";
+  let badge="";
+  if(pago){ const p=proximaFecha(pago); let cls="chip-info";
+    if(p.dias===0) cls="chip-bad"; else if(p.dias<=5) cls="chip-warn";
+    badge=`<span class="tc-badge ${cls}">💳 Pago ${textoDias(p.dias)}</span>`; }
+  const partes=[];
+  if(corte) partes.push(`🗓️ Corte día ${corte}`);
+  if(pago) partes.push(`💵 Pago día ${pago}`);
+  return `<div class="tc-linea"><span class="tc-fechas">${partes.join(" · ")}</span>${badge}</div>`;
 }
 function listaGastos(c){
   const ord=(c.gastos||[]).slice().sort((a,b)=>String(a.fecha||"").localeCompare(String(b.fecha||"")));
@@ -953,6 +991,15 @@ function listaGastos(c){
 
 function renderAlertas(m,totalIng,totalPresu){
   const cont=document.getElementById("alertas"); cont.innerHTML="";
+  // Recordatorios de pago de tarjetas (día de pago próximo, ≤7 días o vencido hoy)
+  const pagos=[];
+  m.categorias.forEach(c=>{ if(c.tipo!=="fijo") return; const pago=Number(c.fechaPago)||0; if(!pago) return;
+    if(estaPagado(c)) return; // ya está pagada este mes
+    const p=proximaFecha(pago);
+    if(p.dias<=7) pagos.push({nombre:c.nombre, icono:iconoCat(c), dias:p.dias, dia:pago}); });
+  pagos.sort((a,b)=>a.dias-b.dias);
+  if(pagos.length){ const d=document.createElement("div"); d.className="alerta-banner "+(pagos.some(x=>x.dias<=1)?"rojo":"");
+    d.innerHTML=`<span>💳</span><div><b>Recordatorio de pagos:</b><ul>${pagos.map(x=>`<li>${x.icono} ${escapar(x.nombre)}: paga <b>${textoDias(x.dias)}</b> (día ${x.dia})</li>`).join("")}</ul></div>`; cont.appendChild(d); }
   const avisos=[], criticos=[];
   m.categorias.forEach(c=>{ if(c.tipo!=="variable") return; const presu=Number(c.presupuesto)||0; if(presu<=0) return;
     const g=gastadoCat(c), pct=g/presu;
@@ -1170,18 +1217,22 @@ document.getElementById("btnNuevaCat").onclick=()=>abrirModal(null);
 document.getElementById("mCancelar").onclick=cerrarModal;
 modal.addEventListener("click",e=>{ if(e.target===modal) cerrarModal(); });
 document.getElementById("mTipo").addEventListener("change",actualizarHint);
-function actualizarHint(){ document.getElementById("mHint").textContent=document.getElementById("mTipo").value==="fijo"
-  ? "Cuentas que pagas completas cada mes (renta, servicios, préstamos). Se marcan como pagadas → verde."
-  : "Gastos del día a día (comida, transporte). Registras cada gasto y se va consumiendo el presupuesto."; }
+function actualizarHint(){ const fijo=document.getElementById("mTipo").value==="fijo";
+  document.getElementById("mHint").textContent=fijo
+    ? "Cuentas que pagas completas cada mes (renta, servicios, préstamos, tarjetas). Se marcan como pagadas → verde."
+    : "Gastos del día a día (comida, transporte). Registras cada gasto y se va consumiendo el presupuesto.";
+  document.getElementById("mFechasTC").style.display=fijo?"block":"none"; }
 function abrirModal(id){ editandoId=id; const m=mesData();
   if(id){ const c=m.categorias.find(x=>x.id===id);
     document.getElementById("modalTitulo").textContent="Editar categoría";
     document.getElementById("mNombre").value=c.nombre; document.getElementById("mTipo").value=c.tipo;
     document.getElementById("mIcono").value=iconoCat(c);
     document.getElementById("mPresupuesto").value=c.presupuesto||"";
+    document.getElementById("mCorte").value=c.fechaCorte||""; document.getElementById("mPago").value=c.fechaPago||"";
   }else{ document.getElementById("modalTitulo").textContent="Nueva categoría";
     document.getElementById("mNombre").value=""; document.getElementById("mTipo").value="variable";
-    document.getElementById("mIcono").value=""; document.getElementById("mPresupuesto").value=""; }
+    document.getElementById("mIcono").value=""; document.getElementById("mPresupuesto").value="";
+    document.getElementById("mCorte").value=""; document.getElementById("mPago").value=""; }
   actualizarHint(); modal.classList.add("activo"); document.getElementById("mNombre").focus(); }
 function cerrarModal(){ modal.classList.remove("activo"); editandoId=null; }
 document.getElementById("mGuardar").onclick=()=>{
@@ -1189,9 +1240,12 @@ document.getElementById("mGuardar").onclick=()=>{
   const presupuesto=parseFloat(document.getElementById("mPresupuesto").value)||0;
   const icono=(document.getElementById("mIcono").value||"").trim() || iconoDefault(nombre);
   if(!nombre){ toast("Escribe un nombre para la categoría."); return; }
+  const clampDia=v=>{ const n=parseInt(v,10); return (n>=1&&n<=31)?n:null; };
+  const fechaCorte = tipo==="fijo" ? clampDia(document.getElementById("mCorte").value) : null;
+  const fechaPago = tipo==="fijo" ? clampDia(document.getElementById("mPago").value) : null;
   const m=mesData();
-  if(editandoId){ const c=m.categorias.find(x=>x.id===editandoId); c.nombre=nombre; c.tipo=tipo; c.presupuesto=presupuesto; c.icono=icono; }
-  else m.categorias.push({id:uid(),nombre,tipo,icono,presupuesto,gastos:[]});
+  if(editandoId){ const c=m.categorias.find(x=>x.id===editandoId); c.nombre=nombre; c.tipo=tipo; c.presupuesto=presupuesto; c.icono=icono; c.fechaCorte=fechaCorte; c.fechaPago=fechaPago; }
+  else m.categorias.push({id:uid(),nombre,tipo,icono,presupuesto,gastos:[],fechaCorte,fechaPago});
   cerrarModal(); render();
 };
 
